@@ -7,6 +7,7 @@
 #include "CTowerRemovedEvent.h"
 
 #include "../Util/NewFramework.h"
+#include "Macro.h"
 
 namespace NKHook5::Classes
 {
@@ -61,6 +62,11 @@ namespace NKHook5::Classes
 		virtual void SetPopCount(int popCount) { this->mPopCount = popCount; };
 		virtual void IncPopCount(int amount, class CBloon* bloon) {};
 		virtual void KONG_FUN_00633bb0() {};
+
+		void IncrementUpgradePath(int32_t path)
+		{
+			ThisCall_NonMember<Signatures::Sigs::CBaseTower_IncrementUpgradePath, void, CBaseTower>(this, path);
+		}
 	};
 
 	static_assert(sizeof(CObserver<CBloonEscapedEvent>) == 0x8);

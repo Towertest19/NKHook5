@@ -97,6 +97,11 @@ namespace NKHook5
 			{
 				return ThisCall<Sigs::CTowerFactory_GetTowerInfo, &CTowerFactory::GetTowerInfo>(this, id);
 			}
+
+			bool ApplyUpgrade(STowerInfo* towerInfo, CBaseTower* tower, const int32_t* upgradeIndex, const int32_t* path)
+			{
+				return ThisCall_NonMember<Sigs::CTowerFactory_ApplyUpgrade, bool, CTowerFactory>(this, towerInfo, tower, upgradeIndex, path);
+			}
         }; //Size: 0x0A4
 
         static_assert(sizeof(CBaseFactory<STowerInfo, CBaseTower>) == 0x50);

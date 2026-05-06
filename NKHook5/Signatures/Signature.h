@@ -27,6 +27,7 @@ namespace NKHook5::Signatures {
 		CBaseScreen_OpenPopup,
 		CBaseScreen_StartUsingAsset,
 		/* CBaseTower */
+		CBaseTower_IncrementUpgradePath,
 		/* CBloon */
 		CBloon_ApplyEffect,
 		CBloon_Update,
@@ -124,6 +125,7 @@ namespace NKHook5::Signatures {
 		CTowerFactory_CCTOR,
 		CTowerFactory_GetTowerInfo,
 		CTowerFactory_GetTowerName,
+		CTowerFactory_ApplyUpgrade,
 		/* CUnzippedFile */
 		CUnzippedFile_CCTOR,
 		/* CWeapon */
