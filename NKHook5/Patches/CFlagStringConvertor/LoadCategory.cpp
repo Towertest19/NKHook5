@@ -60,7 +60,7 @@ namespace NKHook5::Patches::CFlagStringConvertor
 				Print(LogLevel::INFO, "Old types copied!");
 				Print(LogLevel::INFO, "Injecting new types...");
 				for (const std::string& flagDef : towerFlagExt->GetFlags()) {
-					uint64_t moddedSlot = g_towerFlags.Register(flagDef);
+					uint64_t moddedSlot = g_towerFlags.RegisterBitFlag(flagDef);
 					allTowers.emplace_back(flagDef);
 					Print(LogLevel::INFO, "Injected '%s' at slot '%llx'", flagDef.c_str(), moddedSlot);
 				}
@@ -92,7 +92,8 @@ namespace NKHook5::Patches::CFlagStringConvertor
 				Print(LogLevel::INFO, "Old types copied!");
 				Print(LogLevel::INFO, "Injecting new types...");
 				for (const std::string& flagDef : bloonFlagExt->GetFlags()) {
-					uint64_t moddedSlot = g_bloonFlags.Register(flagDef);
+					// Bloons: continue bit flags from 20 (after Dreadbloon at bit 19)
+					uint64_t moddedSlot = g_bloonFlags.RegisterBitFlag(flagDef, 20);
 					allBloons.emplace_back(flagDef);
 					Print(LogLevel::INFO, "Injected '%s' at slot '%llx'", flagDef.c_str(), moddedSlot);
 				}
@@ -115,7 +116,8 @@ namespace NKHook5::Patches::CFlagStringConvertor
 				Print(LogLevel::INFO, "Old types copied!");
 				Print(LogLevel::INFO, "Injecting new types...");
 				for (const std::string& flagDef : statusFlagExt->GetFlags()) {
-					uint64_t moddedSlot = g_bloonStatusFlags.Register(flagDef);
+					// Status effects: use bit flags first (start at 20), then fallback to sequential
+					uint64_t moddedSlot = g_bloonStatusFlags.RegisterBitFlag(flagDef, 20);
 					allEffects.emplace_back(flagDef);
 					Print(LogLevel::INFO, "Injected '%s' at slot '%llx'", flagDef.c_str(), moddedSlot);
 				}
@@ -146,6 +148,7 @@ namespace NKHook5::Patches::CFlagStringConvertor
 				Print(LogLevel::INFO, "Old types copied!");
 				Print(LogLevel::INFO, "Injecting new types...");
 				for (const std::string& flagDef : weaponFlagExt->GetFlags()) {
+					// Weapons: use +1 sequential IDs
 					uint64_t moddedSlot = g_weaponFlags.Register(flagDef);
 					allWeapons.emplace_back(flagDef);
 					Print(LogLevel::INFO, "Injected '%s' at slot '%llx'", flagDef.c_str(), moddedSlot);
@@ -164,7 +167,7 @@ namespace NKHook5::Patches::CFlagStringConvertor
 	auto LoadCategory::Apply() -> bool
 	{
 		const void* address = Signatures::GetAddressOf(Sigs::CFlagStringConvertor_LoadCategory);
-		if(address)
+		if(address && ValidateAddress((uintptr_t)address))
 		{
 			auto* detour = new PLH::x86Detour((const uint64_t)address, std::bit_cast<size_t>(&LoadCategory::cb_hook), &o_func);
 			if(detour->hook())
@@ -173,11 +176,13 @@ namespace NKHook5::Patches::CFlagStringConvertor
 			}
 			else
 			{
+				Print(LogLevel::ERR, "Patch '%s': Failed to hook at address %p", GetName().c_str(), address);
 				return false;
 			}
 		}
 		else
 		{
+			Print(LogLevel::ERR, "Patch '%s': Invalid or missing address", GetName().c_str());
 			return false;
 		}
 	}

@@ -24,13 +24,8 @@ namespace NKHook5
             void Update::cb_hook(float* pSGameTime) {
                 if (lastFrame != currentFrame) {
                     lastFrame = currentFrame;
-                    updatesThisFrame = 0;
                 }
-                updatesThisFrame++;
-                if (updatesThisFrame > maxBloonUpdates && updatesThisFrame % 2 == 0) {
-                    return;
-                }
-
+                // Always call original function to prevent bloon movement bugs
 				auto ofn = std::bit_cast<decltype(&Update::cb_hook)>(reinterpret_cast<void*>(o_func));
 				(this->*ofn)(pSGameTime);
             }

@@ -65,7 +65,7 @@ namespace NKHook5
             auto LoadAssets::Apply() -> bool
             {
                 const void* address = GetAddressOf(Sigs::CBloonsTD5Game_LoadAssets);
-                if(address)
+                if(address && ValidateAddress((uintptr_t)address))
                 {
                     auto* detour = new PLH::x86Detour((const uint64_t)address, (const uintptr_t)&cb_hook, &o_func);
                     if(detour->hook())
@@ -74,11 +74,15 @@ namespace NKHook5
                     }
                     else
                     {
+                        Common::Logging::Logger::Print(Common::Logging::Logger::LogLevel::ERR, 
+                            "Patch '%s': Failed to hook at address %p", GetName().c_str(), address);
                         return false;
                     }
                 }
                 else
                 {
+                    Common::Logging::Logger::Print(Common::Logging::Logger::LogLevel::ERR, 
+                        "Patch '%s': Invalid or missing address", GetName().c_str());
                     return false;
                 }
             }

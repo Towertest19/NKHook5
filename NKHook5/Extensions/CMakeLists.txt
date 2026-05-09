@@ -1,1 +1,3 @@
 add_subdirectory(StatusEffect)
+add_subdirectory(LabDefinitions)
+add_subdirectory(TowerInfo)

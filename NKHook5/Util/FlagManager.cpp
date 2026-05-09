@@ -2,7 +2,7 @@
 
 using namespace NKHook5::Util;
 
-FlagManager::FlagManager()
+FlagManager::FlagManager() : nextSequentialId(1)
 {
 }
 
@@ -13,19 +13,37 @@ void FlagManager::Register(uint64_t numeric, const std::string& text)
 
 uint64_t FlagManager::Register(const std::string& text)
 {
-	uint64_t selectedId = 0;
-	for (size_t i = 0; i < INT_MAX; i++) {
-		if (IsIDAvailable(i)) {
-			selectedId = i;
-			break;
+	// Sequential +1 registration - finds next available ID by incrementing
+	// Skips existing bit flag IDs (1, 2, 4, 8, etc.) and already-registered IDs
+	uint64_t id = nextSequentialId;
+	while (!IsIDAvailable(id)) {
+		id++;
+	}
+	nextSequentialId = id + 1;
+	
+	Register(id, text);
+	printf("[FlagManager] Registered '%s' with sequential ID %llu\n", text.c_str(), id);
+	return id;
+}
+
+uint64_t FlagManager::RegisterBitFlag(const std::string& text, int startBit)
+{
+	// Bit flag registration - finds next available bit flag starting from startBit
+	// For bloons: should start from bit 20 (after Dreadbloon at bit 19)
+	// For towers: should start from bit 59 (after GameDummy at bit 58)
+	for (int i = startBit; i < 64; i++) {
+		uint64_t flagValue = 1ull << i;
+		if (IsIDAvailable(flagValue)) {
+			Register(flagValue, text);
+			printf("[FlagManager] Registered '%s' with bit flag 0x%llx (bit %d)\n", 
+				text.c_str(), flagValue, i);
+			return flagValue;
 		}
 	}
-	if (selectedId == 0) {
-		printf("Failed to register flag '%s', couldn't find an available ID!", text.c_str());
-		return 0;
-	}
-	Register(selectedId, text);
-	return selectedId;
+	
+	// Bit slots exhausted - fallback to sequential +1
+	printf("[FlagManager] WARNING: No bit slots for '%s', falling back to sequential ID\n", text.c_str());
+	return Register(text);
 }
 
 bool FlagManager::IsIDAvailable(uint64_t id)

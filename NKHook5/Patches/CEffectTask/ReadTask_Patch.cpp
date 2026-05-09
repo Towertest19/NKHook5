@@ -18,8 +18,12 @@ namespace NKHook5
 				const uintptr_t address = std::bit_cast<uintptr_t>(Signatures::GetAddressOf(Sigs::CEffectTask_ReadTask_Patch));
 				if (address == 0)
 					return false;
+				// The v4.7 retail parser can assume an Effect task has SpriteFile metadata and
+				// then walk uninitialised sprite state when the property is omitted. Force the
+				// vulnerable JSON-property probe to return false so the original runtime takes
+				// its no-sprite path instead of dereferencing missing effect-sprite data.
 				static const uint32_t patchLen = 5;
-				this->WriteBytes(address, "\xB8\x00\x00\x00\x00", patchLen);
+				this->WriteBytes(address, "\x33\xC0\x90\x90\x90", patchLen);
 				return true;
             }
         }

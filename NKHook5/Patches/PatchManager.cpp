@@ -19,7 +19,8 @@
 #include "CFlagStringConvertor/FlagToString.h"
 #include "CFlagStringConvertor/LoadCategory.h"
 #include "CFlagStringConvertor/StringToFlag.h"
-//#include "CGameScreen/Init.h"
+#include "CGameScreen/Init.h"
+#include "CLabFactory/GetMaxLevel.h"
 #include "CPlayerProfileV1/InternalLoad.h"
 #include "CPlayerProfileV1/Save.h"
 #include "CProjectile/Clone.h"
@@ -35,6 +36,7 @@
 #include "CWeaponFactory/ParseTask.h"
 #include "CZipFile/LoadFrom.h"
 #include "C_GameSFXManager/Play.h"
+#include "TowerInfoScreen/SetTower.h"
 #include "GLRenderLayer/Draw.h"
 #include "OpenGL/Swapbuffers.h"
 #include "Screens/GetScreenForParadigm.h"
@@ -65,6 +67,7 @@ void PatchManager::ApplyAll()
     PatchManager::ApplyPatch(new CFlagStringConvertor::LoadCategory());
     PatchManager::ApplyPatch(new CFlagStringConvertor::StringToFlag());
     //PatchManager::ApplyPatch(new CGameScreen::Init());
+    PatchManager::ApplyPatch(new CLabFactory::GetMaxLevel());
     PatchManager::ApplyPatch(new CPlayerProfileV1::InternalLoad());
     //PatchManager::ApplyPatch(new CPlayerProfileV1::Save());
     PatchManager::ApplyPatch(new CProjectile::Clone());

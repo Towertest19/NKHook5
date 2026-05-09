@@ -27,6 +27,7 @@ namespace NKHook5::Signatures {
 		CBaseScreen_OpenPopup,
 		CBaseScreen_StartUsingAsset,
 		/* CBaseTower */
+		CBaseTower_IncrementUpgradePath,
 		/* CBloon */
 		CBloon_ApplyEffect,
 		CBloon_Update,
@@ -72,6 +73,8 @@ namespace NKHook5::Signatures {
 		/* CGlueStatusEffect */
 		CGlueStatusEffect_VTable,
 		CGlueStatusEffect_CCTOR,
+		/* CLabFactory */
+		CLabFactory_GetMaxLevel,
 		/* CLoc */
 		CLoc_FindText,
 		CLoc_GetText,
@@ -124,6 +127,7 @@ namespace NKHook5::Signatures {
 		CTowerFactory_CCTOR,
 		CTowerFactory_GetTowerInfo,
 		CTowerFactory_GetTowerName,
+		CTowerFactory_ApplyUpgrade,
 		/* CUnzippedFile */
 		CUnzippedFile_CCTOR,
 		/* CWeapon */
@@ -150,6 +154,9 @@ namespace NKHook5::Signatures {
 		/* Matrix16F */
 		/* Screens */
 		Screens_GetScreenForParadigm,
+		/* TowerInfoScreen */
+		TowerInfoScreen_CCTOR,
+		TowerInfoScreen_SetTower,
 		/* ScriptedScreen */
 		ScriptedScreen_VTable,
 		ScriptedScreen_CCTOR,

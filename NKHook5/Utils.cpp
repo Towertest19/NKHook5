@@ -39,9 +39,27 @@ size_t Utils::FindPattern(std::string_view pattern)
 	auto sig = hat::parse_signature(pattern);
 	if (sig.has_value()) {
 		const auto result = hat::find_pattern(sig.value(), ".text");
-		return result.has_result() ? reinterpret_cast<uintptr_t>(result.get()) : NULL;
+		if (result.has_result()) {
+			auto addr = reinterpret_cast<uintptr_t>(result.get());
+			// Validate the address is within the executable module bounds
+			auto base = GetModuleBase();
+			auto end = GetBaseModuleEnd();
+			if (addr >= base && addr < end) {
+				if (!IsAddressExecutable(addr))
+				{
+					Print(LogLevel::ERR, "Sig '%s' found non-executable address %p; rejecting match", 
+						pattern.data(), (void*)addr);
+					return 0;
+				}
+				return addr;
+			}
+			Print(LogLevel::ERR, "Sig '%s' found address %p outside module range [%p - %p]", 
+				pattern.data(), (void*)addr, (void*)base, (void*)end);
+			return 0;
+		}
+		return NULL;
 	} else {
-		Print(LogLevel::ERR, "Sig failed with '%s' (%s)", pattern.data(), magic_enum::enum_name<hat::signature_parse_error>(sig.error()).data());
+		Print(LogLevel::ERR, "Sig failed with '%s' (%s)", pattern.data(), magic_enum::enum_name(sig.error()).data());
 	}
 	return 0;
 }
@@ -53,11 +71,51 @@ size_t Utils::FindPattern(size_t rangeStart, size_t rangeEnd, std::string_view p
 				reinterpret_cast<const std::byte *>(rangeStart),
 				reinterpret_cast<const std::byte *>(rangeEnd),
 				sig.value());
-		return result.has_result() ? reinterpret_cast<uintptr_t>(result.get()) : NULL;
+		if (result.has_result()) {
+			auto addr = reinterpret_cast<uintptr_t>(result.get());
+			// Validate the address is within the specified range
+			if (addr >= rangeStart && addr < rangeEnd) {
+				if (!IsAddressExecutable(addr))
+				{
+					Print(LogLevel::ERR, "Sig '%s' found non-executable address %p; rejecting match", 
+						pattern.data(), (void*)addr);
+					return 0;
+				}
+				return addr;
+			}
+			Print(LogLevel::ERR, "Sig '%s' found address %p outside specified range [%p - %p]",
+				pattern.data(), (void*)addr, (void*)rangeStart, (void*)rangeEnd);
+			return 0;
+		}
+		return NULL;
 	} else {
-		Print(LogLevel::ERR, "Sig failed with '%s' (%s)", pattern.data(), magic_enum::enum_name<hat::signature_parse_error>(sig.error()).data());
+		Print(LogLevel::ERR, "Sig failed with '%s' (%s)", pattern.data(), magic_enum::enum_name(sig.error()).data());
 	}
 	return 0;
+}
+
+bool Utils::IsAddressExecutable(size_t address)
+{
+	if (address == 0) {
+		return false;
+	}
+
+	// Check if address is within our module first
+	size_t base = GetModuleBase();
+	size_t end = GetBaseModuleEnd();
+	if (address < base || address >= end) {
+		return false;
+	}
+
+	MEMORY_BASIC_INFORMATION mbi;
+	if (VirtualQuery((LPCVOID)address, &mbi, sizeof(mbi))) {
+		return (mbi.State == MEM_COMMIT) && 
+		       (mbi.Protect == PAGE_EXECUTE || 
+		        mbi.Protect == PAGE_EXECUTE_READ || 
+		        mbi.Protect == PAGE_EXECUTE_READWRITE ||
+		        mbi.Protect == PAGE_EXECUTE_WRITECOPY);
+	}
+	return false;
 }
 
 std::string Utils::GetTypeName(void* object)

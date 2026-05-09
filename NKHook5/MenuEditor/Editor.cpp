@@ -11,6 +11,7 @@
 #include "../Classes/CTowerManager.h"
 #include "../Classes/eSFX_Items.h"
 
+#include <algorithm>
 #include <iostream>
 #include <magic_enum/magic_enum.hpp>
 
@@ -19,6 +20,56 @@ using namespace NKHook5::Classes;
 using namespace NKHook5::MenuEditor;
 
 extern Classes::CBloonsTD5Game* g_appPtr;
+
+
+namespace
+{
+	constexpr int32_t kUpgradePathLeft = 0;
+	constexpr int32_t kUpgradePathRight = 1;
+	constexpr int32_t kMaxRuntimeUpgradeTier = 4;
+
+	bool ApplyRuntimeTowerUpgrade(Classes::CTowerFactory* towerFactory, Classes::CBaseTower* tower, int32_t path, int32_t tier)
+	{
+		if (towerFactory == nullptr || tower == nullptr)
+			return false;
+
+		auto* towerInfo = towerFactory->GetTowerInfo(static_cast<Classes::TowerIDs>(tower->mTypeFlags));
+		if (towerInfo == nullptr)
+			return false;
+
+		const int32_t upgradeIndex[2] = { path, tier };
+		const int32_t upgradePath = path;
+		return towerFactory->ApplyUpgrade(towerInfo, tower, upgradeIndex, &upgradePath);
+	}
+
+	bool EditTowerUpgradeCounter(const char* label, Classes::CTowerFactory* towerFactory, Classes::CBaseTower* tower, int32_t path, int32_t& counter)
+	{
+		const int32_t oldCounter = counter;
+		int32_t requestedCounter = counter;
+		if (!ImGui::InputInt(label, &requestedCounter))
+			return false;
+
+		requestedCounter = std::clamp(requestedCounter, 0, kMaxRuntimeUpgradeTier);
+		if (requestedCounter <= oldCounter)
+		{
+			counter = requestedCounter;
+			return requestedCounter != oldCounter;
+		}
+
+		counter = oldCounter;
+		bool appliedAnyUpgrade = false;
+		for (int32_t tier = oldCounter; tier < requestedCounter; ++tier)
+		{
+			if (!ApplyRuntimeTowerUpgrade(towerFactory, tower, path, tier))
+				break;
+
+			tower->IncrementUpgradePath(path);
+			appliedAnyUpgrade = true;
+		}
+
+		return appliedAnyUpgrade;
+	}
+}
 
 void ElementEditor(Classes::CBasePositionableObject* object)
 {
@@ -105,8 +156,14 @@ void Editor::Render() {
 						ImGui::InputFloat("Lifetime", &tower->mLifetime);
 						ImGui::InputFloat("Time Alive", &tower->mAliveTime);
 						ImGui::Checkbox("Please Destroy", &tower->mPleaseDestroy);
-						ImGui::InputInt("Left Upgrades", &tower->mLeftUpgrades);
-						ImGui::InputInt("Right Upgrades", &tower->mRightUpgrades);
+						const int32_t leftBeforeEdit = tower->mLeftUpgrades;
+						const int32_t rightBeforeEdit = tower->mRightUpgrades;
+						EditTowerUpgradeCounter("Left Upgrades", towerFactory, tower, kUpgradePathLeft, tower->mLeftUpgrades);
+						EditTowerUpgradeCounter("Right Upgrades", towerFactory, tower, kUpgradePathRight, tower->mRightUpgrades);
+						if (tower->mLeftUpgrades < leftBeforeEdit || tower->mRightUpgrades < rightBeforeEdit)
+						{
+							ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.25f, 1.0f), "Downgrades only change counters; applied upgrade data is not removed from the live tower.");
+						}
 						ImGui::InputInt("Sell Price", &tower->mSellPrice);
 						auto targetStr = std::format("{0} ({1})", tower->mTargetingFlags, towerFactory->FlagToString(1, tower->mTargetingFlags));
 						ImGui::InputScalar(std::format("Target {0}", targetStr).c_str(), ImGuiDataType_U64, &tower->mTargetingFlags);

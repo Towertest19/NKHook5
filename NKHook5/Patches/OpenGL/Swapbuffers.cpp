@@ -90,7 +90,7 @@ namespace NKHook5
                     return false;
                 }
                 const uintptr_t address = (const uintptr_t)GetProcAddress(hOpenGL, "wglSwapBuffers");
-                if (address)
+                if (address && Utils::IsAddressExecutable(address))
                 {
                     PLH::x86Detour* detour = new PLH::x86Detour(address, (const uintptr_t)&hkSwapbuffers, &o_func);
                     if (detour->hook())
@@ -99,11 +99,15 @@ namespace NKHook5
                     }
                     else
                     {
+                        Common::Logging::Logger::Print(Common::Logging::Logger::LogLevel::ERR, 
+                            "Patch '%s': Failed to hook at address %p", GetName().c_str(), (void*)address);
                         return false;
                     }
                 }
                 else
                 {
+                    Common::Logging::Logger::Print(Common::Logging::Logger::LogLevel::ERR, 
+                        "Patch '%s': Invalid or missing address", GetName().c_str());
                     return false;
                 }
             }
