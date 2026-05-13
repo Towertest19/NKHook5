@@ -22,7 +22,7 @@ uint64_t FlagManager::Register(const std::string& text)
 	nextSequentialId = id + 1;
 	
 	Register(id, text);
-	printf("[FlagManager] Registered '%s' with sequential ID %llu\n", text.c_str(), id);
+	printf("[FlagManager] Registered '%s' with ID %llu\n", text.c_str(), id);
 	return id;
 }
 
@@ -42,7 +42,7 @@ uint64_t FlagManager::RegisterBitFlag(const std::string& text, int startBit)
 	}
 	
 	// Bit slots exhausted - fallback to sequential +1
-	printf("[FlagManager] WARNING: No bit slots for '%s', falling back to sequential ID\n", text.c_str());
+	printf("[FlagManager] WARNING: No bit slots for '%s', falling back to ID lookup\n", text.c_str());
 	return Register(text);
 }
 

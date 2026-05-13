@@ -2,6 +2,8 @@
 
 #include <Logging/Logger.h>
 
+#include <algorithm>
+
 using namespace Common;
 using namespace Common::Extensions;
 using namespace Common::Logging::Logger;
@@ -97,6 +99,11 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
 			// No Effects map — respect an explicit MaxLevel override if present,
 			// otherwise use the vanilla default of 4 (tier IV).
 			def.maxLevel = content.value("MaxLevel", kVanillaMaxLevel);
+		}
+
+		if (content.contains("MaxLevel"))
+		{
+			def.maxLevel = std::max(def.maxLevel, content.value("MaxLevel", kVanillaMaxLevel));
 		}
 
 		// Build tier summary string for the log line.

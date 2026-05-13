@@ -72,7 +72,7 @@ namespace NKHook5::Patches::TowerInfoScreen
 		// straight through so the game handles display and unlock popups normally.
 		//
 		// We intentionally skip the IsBitFlag() / power-of-two guard that was here
-		// before: custom towers that fell back to sequential IDs (when bit-flag
+		// before: custom towers that fell back to numeric IDs (when bit-flag
 		// slots were exhausted) are still registered in g_towerFlags and must
 		// go through the TowerInfoExt visibility check just like bit-flag towers.
 		std::string towerName = g_towerFlags.GetName(towerId);

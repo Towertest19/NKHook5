@@ -83,6 +83,7 @@ void PatchManager::ApplyAll()
     PatchManager::ApplyPatch(new CWeaponFactory::ParseTask());
     PatchManager::ApplyPatch(new CZipFile::LoadFrom());
     PatchManager::ApplyPatch(new C_GameSFXManager::Play());
+    PatchManager::ApplyPatch(new TowerInfoScreen::SetTower());
     //PatchManager::ApplyPatch(new GLRenderLayer::Draw());
     PatchManager::ApplyPatch(new OpenGL::Swapbuffers());
     PatchManager::ApplyPatch(new Screens::GetScreenForParadigm());

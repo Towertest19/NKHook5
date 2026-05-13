@@ -1,6 +1,7 @@
 #include "Editor.h"
 
 #include <imgui.h>
+#include <windows.h>
 
 #include "../Classes/CBloonManager.h"
 #include "../Classes/CBloonFactory.h"
@@ -40,6 +41,18 @@ namespace
 		const int32_t upgradeIndex[2] = { path, tier };
 		const int32_t upgradePath = path;
 		return towerFactory->ApplyUpgrade(towerInfo, tower, upgradeIndex, &upgradePath);
+	}
+
+	bool IsRuntimeEditorTogglePressed()
+	{
+		static bool wasRightShiftDown = false;
+		const bool isRightShiftDown = (GetAsyncKeyState(VK_RSHIFT) & 0x8000) != 0;
+		const bool pressed = isRightShiftDown && !wasRightShiftDown;
+		wasRightShiftDown = isRightShiftDown;
+
+		// Keep ImGui's key state as a fallback for environments where the backend
+		// produces a key press but Win32's async state is unavailable or filtered.
+		return pressed || ImGui::IsKeyPressed(ImGuiKey_RightShift, false);
 	}
 
 	bool EditTowerUpgradeCounter(const char* label, Classes::CTowerFactory* towerFactory, Classes::CBaseTower* tower, int32_t path, int32_t& counter)
@@ -111,7 +124,7 @@ void ScreenTree(Classes::CBaseScreen* screen) {
 void Editor::Render() {
 	static bool show = false;
 
-	if(ImGui::IsKeyPressed(ImGuiKey_RightShift, false))
+	if(IsRuntimeEditorTogglePressed())
 		show = !show;
 
 	if(!show)
