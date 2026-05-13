@@ -154,6 +154,10 @@ namespace NKHook5::Signatures {
 		/* Matrix16F */
 		/* Screens */
 		Screens_GetScreenForParadigm,
+		/* MonkeyLabScreen */
+		MonkeyLabScreen_CCTOR,
+		/* SpecialtiesScreen */
+		SpecialtiesScreen_CCTOR,
 		/* TowerInfoScreen */
 		TowerInfoScreen_SetTower,
 		/* ScriptedScreen */
