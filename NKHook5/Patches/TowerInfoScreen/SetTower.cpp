@@ -60,62 +60,55 @@ namespace NKHook5::Patches::TowerInfoScreen
 	{
 		auto ofn = (void(__fastcall*)(void*, int, uint64_t))o_func;
 
-		// If called before IDs/types are injected, we may see placeholder/garbage values.
-		// Only act on values that look like real tower flags.
+		// Empty tower ID: clear the info panel.
 		if (towerId == 0)
 		{
-			ofn(thisptr, pad, towerId);
+			ofn(thisptr, pad, 0);
 			return;
 		}
 
-		// We only support the flag-based tower IDs here (power-of-two bit flags).
-		// If it's not a flag, pass through.
-		if ((towerId & (towerId - 1)) != 0)
-		{
-			ofn(thisptr, pad, towerId);
-			return;
-		}
-
-		// Only process custom towers - vanilla towers should always pass through
-		// Custom towers typically have IDs beyond GameDummy (bit 58)
-		if (towerId <= (1ull << 58))
-		{
-			ofn(thisptr, pad, towerId);
-			return;
-		}
-		
-		// This is a custom tower, check if it should be displayed
+		// Resolve this ID against the custom tower flag manager.
+		// Any ID that is NOT in g_towerFlags is a vanilla/engine tower - pass it
+		// straight through so the game handles display and unlock popups normally.
+		//
+		// We intentionally skip the IsBitFlag() / power-of-two guard that was here
+		// before: custom towers that fell back to sequential IDs (when bit-flag
+		// slots were exhausted) are still registered in g_towerFlags and must
+		// go through the TowerInfoExt visibility check just like bit-flag towers.
 		std::string towerName = g_towerFlags.GetName(towerId);
 		if (towerName.empty() || towerName == "INVALID")
 		{
-			// Flag manager not ready / not injected yet, or unknown flag: do nothing.
+			// Not a custom tower (or flag manager not yet populated) - vanilla path.
 			ofn(thisptr, pad, towerId);
 			return;
 		}
-		
-		// Default to displaying custom towers unless explicitly told not to
+
+		// Custom tower: consult TowerInfoExt for the visibility decision.
+		// Default to showing the tower when the extension is not yet loaded so
+		// that valid custom towers still trigger the vanilla unlock popup that
+		// the original SetTower implementation fires.
 		bool shouldDisplay = true;
-		
-		if (!towerName.empty())
+		auto* towerInfoExt = ExtensionManager::Get<TowerInfoExt>();
+		if (towerInfoExt)
 		{
-			auto* towerInfoExt = ExtensionManager::Get<TowerInfoExt>();
-			if (towerInfoExt)
-			{
-				shouldDisplay = towerInfoExt->ShouldDisplayInInfoPanel(towerName, true); // true = isCustomTower
-				
-				if (!shouldDisplay)
-				{
-					Print(LogLevel::INFO, "TowerInfoScreen: Hiding custom tower '%s' (ID: %llu) from info panel", 
-						towerName.c_str(), towerId);
-					
-					// Call original function with invalid ID to prevent display
-					ofn(thisptr, pad, 0); // Pass 0 to hide tower
-					return;
-				}
-			}
+			shouldDisplay = towerInfoExt->ShouldDisplayInInfoPanel(towerName, true);
 		}
-		
-		// Call original function for custom tower
+
+		if (!shouldDisplay)
+		{
+			Print(LogLevel::INFO, "TowerInfoScreen: Hiding custom tower '%s' (ID: %llu) from info panel",
+				towerName.c_str(), towerId);
+			// Pass 0 so the original wrapper exits via its early-return path,
+			// leaving the info panel cleared rather than showing stale data.
+			ofn(thisptr, pad, 0);
+			return;
+		}
+
+		// Show the custom tower: forward the real ID so the original wrapper
+		// sets the populate-flag, tail-calls the display logic, and fires the
+		// same unlock popup mechanism used for vanilla towers.
+		Print(LogLevel::INFO, "TowerInfoScreen: Displaying custom tower '%s' (ID: %llu)",
+			towerName.c_str(), towerId);
 		ofn(thisptr, pad, towerId);
 	}
 }

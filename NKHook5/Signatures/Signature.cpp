@@ -195,22 +195,12 @@ void Signatures::FindAll() {
 		"55 8B EC 6A ?? 68 ?? ?? ?? ?? 64 ?? ?? ?? ?? ?? 50 83 EC ?? 56 57 A1 34 ?? ?? ?? 33 C5 50 8D ?? ?? ?? A3 ?? ?? ?? ?? 0F 28 ?? ?? 0F ?? ?? ?? 8B F9 ?? 7D ?? 8B ?? ?? F3"
 	);
 	/* CLabFactory */
-	// CLabFactory::GetMaxLevel - takes lab name string, returns int max level
-	// This function calculates the maximum upgrade level for a lab based on its definition
-	// Pattern: __thiscall function that takes string pointer and returns int (typically 13)
-	pointerMap[Sigs::CLabFactory_GetMaxLevel] = Signatures::FindFirst(6,
-		// Pattern 1: Based on actual executable analysis - sequence of return values
-		"B8 0C 00 00 00 5D C3 B8 10 00 00 00 5D C3 B8 0D 00 00 00 5D C3",
-		// Pattern 2: Simple check and return 13 (0x0D)
-		"55 8B EC 8B 45 08 85 C0 75 05 B8 0D 00 00 00 5D C2 04 00",
-		// Pattern 3: Function with stack frame returning 13
-		"55 8B EC 83 EC ?? 8B 45 08 89 45 ?? 8B 4D ?? E8 ?? ?? ?? ?? B8 0D 00 00 00",
-		// Pattern 4: Steam version - function that loads string and returns max level
-		"55 8B EC 53 56 57 8B 7D 08 85 FF 75 ?? B8 0D 00 00 00",
-		// Pattern 5: Relaxed - any function that returns 13 (0x0D) and takes string arg
-		"B8 0D 00 00 00 5D C2 04 00",
-		// Pattern 6: Very relaxed - just look for mov eax, 0x0D in context
-		"8B 45 08 85 C0 75 ?? B8 0D 00 00 00"
+	// CLabFactory::GetMaxLevel(__thiscall) - takes an integer lab-type index (NOT a
+	// string pointer). Subtracts 0x25 from the argument, bounds-checks against 0xFA,
+	// then dispatches through a jump table to return the per-lab constant max level.
+	// Binary-verified unique match at VA=0x91B3E0 (BTD5 v4.7 Steam/Kong).
+	pointerMap[Sigs::CLabFactory_GetMaxLevel] = Signatures::FindFirst(1,
+		"55 8B EC 8B 45 08 83 C0 DB 3D FA 00 00 00 0F 87"
 	);
 	/* CLoc */
 	pointerMap[Sigs::CLoc_FindText] = Signatures::FindFirst(2,
@@ -420,51 +410,16 @@ void Signatures::FindAll() {
 		// Relaxed pattern - basic constructor prologue
 		"55 8B EC 6A ?? 68 ?? ?? ?? ?? 64 ?? ?? ?? ?? ?? 50 83 EC ??"
 	);
-	pointerMap[Sigs::TowerInfoScreen_SetTower] = Signatures::FindFirst(4,
-		// TowerInfoScreen::SetTower - exact pattern found at offset 0x001A2750
-		"55 8B EC 8B 45 08 85 C0 75 08 33 C9 8B C1 5D C2 04 00",
-		// Alternative: function that takes tower ID and validates it
-		"55 8B EC 8B 45 08 85 C0 75 ?? 5D C2 04 00",
-		// Pattern based on tower validation functions
-		"55 8B EC 8B 45 08 85 C0 74 ?? 8B 4D ?? 8B 11 8B 92 ?? ?? ?? ??",
-		// Relaxed - any function that takes a tower ID parameter
-		"55 8B EC 8B 45 08 85 C0"
+	// TowerInfoScreen::SetTower - binary-verified unique pattern at VA=0x82C1D0
+	// (BTD5 v4.7 Steam/Kong). The function is a small __thiscall wrapper that:
+	//   1. Returns early (ret 8) if the lo32 of the tower ID is 0.
+	//   2. Sets byte [ecx+0x198]=1 (marks the screen as populated).
+	//   3. Tail-calls the main SetTower implementation.
+	// Signature `55 8B EC 8B 45 08 85 C0 74 10 C6 81 98 01 00 00 01` has exactly
+	// ONE match in the entire .text section, so no vtable fallback is needed.
+	pointerMap[Sigs::TowerInfoScreen_SetTower] = Signatures::FindFirst(1,
+		"55 8B EC 8B 45 08 85 C0 74 10 C6 81 98 01 00 00 01 89 45 08 5D E9"
 	);
-	if (!pointerMap[Sigs::TowerInfoScreen_SetTower])
-	{
-		void* vt = (void*)h_rtti::get_vtable("TowerInfoScreen");
-		if (vt)
-		{
-			auto* vtable = reinterpret_cast<void**>(vt);
-			void* found = nullptr;
-			int foundIdx = -1;
-			for (int i = 0; i < 256; i++)
-			{
-				void* fn = vtable[i];
-				if (!fn)
-				{
-					continue;
-				}
-				if (!Utils::IsAddressExecutable((size_t)fn))
-				{
-					continue;
-				}
-				auto* p = reinterpret_cast<const unsigned char*>(fn);
-				// 55 8B EC 8B 45 08 85 C0
-				if (p[0] == 0x55 && p[1] == 0x8B && p[2] == 0xEC && p[3] == 0x8B && p[4] == 0x45 && p[5] == 0x08 && p[6] == 0x85 && p[7] == 0xC0)
-				{
-					found = fn;
-					foundIdx = i;
-					break;
-				}
-			}
-			if (found)
-			{
-				pointerMap[Sigs::TowerInfoScreen_SetTower] = found;
-				Print(LogLevel::INFO, "Recovered TowerInfoScreen::SetTower via vtable idx %d at %p", foundIdx, found);
-			}
-		}
-	}
 	/* ScriptedScreen */
 	pointerMap[Sigs::ScriptedScreen_VTable] = (void*)h_rtti::get_vtable("ScriptedScreen");
 	pointerMap[Sigs::ScriptedScreen_CCTOR] = Signatures::FindFirst(2,

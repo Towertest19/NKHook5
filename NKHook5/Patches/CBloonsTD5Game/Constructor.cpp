@@ -42,6 +42,14 @@ namespace NKHook5
                 std::map<LoadOrder, std::vector<ModAssetSource*>> sources;
                 for (const auto& mod : fs::directory_iterator(modsDir))
                 {
+                    // Skip sub-directories (e.g. Mods/Scripts/ placed by modders for
+                    // Lua scripting).  ModAssetSource expects an archive file, so
+                    // passing a directory crashes before any mod is injected.
+                    if (mod.is_directory())
+                    {
+                        Print("Skipping directory in Mods/: %s", mod.path().filename().string().c_str());
+                        continue;
+                    }
                     try {
                         ModAssetSource* source = new ModAssetSource(mod);
                         std::shared_ptr<ModArchive> modArch = source->GetModArch();

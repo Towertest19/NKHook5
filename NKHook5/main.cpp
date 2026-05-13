@@ -8,6 +8,7 @@
 
 #include "Extensions/StatusEffect/StatusDefinitionsExt.h"
 #include "Extensions/LabDefinitions/LabDefinitionsExt.h"
+#include "Extensions/SpecialtyDefinitions/SpecialtyDefinitionsExt.h"
 #include "Extensions/TowerInfo/TowerInfoExt.h"
 #include "Patches/PatchManager.h"
 #include "Signatures/Signature.h"
@@ -20,40 +21,40 @@ using namespace Common::Logging::Logger;
 
 static std::string GetEnvVar(const char* name)
 {
-	DWORD needed = GetEnvironmentVariableA(name, nullptr, 0);
-	if (needed == 0)
-	{
-		return {};
-	}
-	std::vector<char> buf(needed);
-	DWORD written = GetEnvironmentVariableA(name, buf.data(), needed);
-	if (written == 0)
-	{
-		return {};
-	}
-	return std::string(buf.data());
+        DWORD needed = GetEnvironmentVariableA(name, nullptr, 0);
+        if (needed == 0)
+        {
+                return {};
+        }
+        std::vector<char> buf(needed);
+        DWORD written = GetEnvironmentVariableA(name, buf.data(), needed);
+        if (written == 0)
+        {
+                return {};
+        }
+        return std::string(buf.data());
 }
 
 static void AppendLuaSearchPath(const char* varName, const std::string& prefixPaths)
 {
-	std::string current = GetEnvVar(varName);
-	std::string next;
-	if (current.empty())
-	{
-		next = prefixPaths;
-	}
-	else
-	{
-		next = prefixPaths + ";" + current;
-	}
-	if (SetEnvironmentVariableA(varName, next.c_str()))
-	{
-		Print(LogLevel::INFO, "Lua env: set %s='%s'", varName, next.c_str());
-	}
-	else
-	{
-		Print(LogLevel::WARNING, "Lua env: failed to set %s (err=%lu)", varName, (unsigned long)GetLastError());
-	}
+        std::string current = GetEnvVar(varName);
+        std::string next;
+        if (current.empty())
+        {
+                next = prefixPaths;
+        }
+        else
+        {
+                next = prefixPaths + ";" + current;
+        }
+        if (SetEnvironmentVariableA(varName, next.c_str()))
+        {
+                Print(LogLevel::INFO, "Lua env: set %s='%s'", varName, next.c_str());
+        }
+        else
+        {
+                Print(LogLevel::WARNING, "Lua env: failed to set %s (err=%lu)", varName, (unsigned long)GetLastError());
+        }
 }
 
 int initialize() {
@@ -127,6 +128,7 @@ int initialize() {
     Common::Extensions::ExtensionManager::AddAll();
     Common::Extensions::ExtensionManager::AddExtension<NKHook5::Extensions::StatusEffect::StatusDefinitionsExt>();
     Common::Extensions::ExtensionManager::AddExtension<NKHook5::Extensions::LabDefinitions::LabDefinitionsExt>();
+    Common::Extensions::ExtensionManager::AddExtension<NKHook5::Extensions::SpecialtyDefinitions::SpecialtyDefinitionsExt>();
     Common::Extensions::ExtensionManager::AddExtension<NKHook5::Extensions::TowerInfo::TowerInfoExt>();
     Print(LogLevel::INFO, "All extensions loaded!");
 

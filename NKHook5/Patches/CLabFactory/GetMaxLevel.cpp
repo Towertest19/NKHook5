@@ -2,6 +2,7 @@
 
 #include "../../Extensions/ExtensionManager.h"
 #include "../../Extensions/LabDefinitions/LabDefinitionsExt.h"
+#include "../../Extensions/SpecialtyDefinitions/SpecialtyDefinitionsExt.h"
 #include "../../Signatures/Signature.h"
 #include "../../Classes/Macro.h"
 #include <Logging/Logger.h>
@@ -19,94 +20,128 @@ namespace NKHook5::Patches::CLabFactory
 	using namespace NKHook5;
 	using namespace NKHook5::Extensions;
 	using namespace NKHook5::Extensions::LabDefinitions;
+	using namespace NKHook5::Extensions::SpecialtyDefinitions;
 	using namespace Signatures;
 
 	static uint64_t o_func;
 
 	GetMaxLevel::GetMaxLevel() : IPatch("CLabFactory::GetMaxLevel") {}
-	
-	// Hook function that intercepts max level calculations
-	int __fastcall cb_hook_getMaxLevel(void* thisptr, int pad, const char* labName)
+
+	// CLabFactory::GetMaxLevel hook.
+	//
+	// The game function is __thiscall and takes a single INTEGER lab-type index
+	// (NOT a const char* pointer).  It subtracts 0x25 from the argument and
+	// dispatches through a jump table to return the per-lab constant max level
+	// (values 1–21, with 13 as the vanilla out-of-range default).
+	//
+	// With NKHook5 active the max level is DYNAMIC:
+	//   1. SpecialtyDefinitionsExt is queried first.  If a SpecialtyDefinitions
+	//      JSON in Assets/JSON/SpecialtyDefinitions/ declares a matching LabType,
+	//      the level derived from its Roman-numeral Effects keys is returned
+	//      (I=1 … IX=9, "X" drawback excluded).  This makes it possible to
+	//      extend any specialty building to up to 9 upgrade tiers.
+	//   2. If no override is registered the original function is called so all
+	//      vanilla specialty buildings continue to work unchanged.
+	//
+	// __fastcall -> __thiscall ABI bridge (x86):
+	//   ECX    -> thisptr   (CLabFactory instance)
+	//   EDX    -> pad       (ignored, required by __fastcall convention)
+	//   [SP+4] -> labType   (integer lab-type index passed by the game)
+	int __fastcall cb_hook_getMaxLevel(void* thisptr, int /*pad*/, int labType)
 	{
-		Print(LogLevel::INFO, "CLabFactory::GetMaxLevel hook entered (this=%p, labName=%p)", thisptr, labName);
-		if (labName)
+		// ── Step 1: check SpecialtyDefinitionsExt ────────────────────────────
+		// A positive return value means a JSON definition was found whose
+		// Effects map has at least one upgrade tier.  Return it directly.
+		auto* specExt = ExtensionManager::Get<SpecialtyDefinitionsExt>();
+		if (specExt)
 		{
-			Print(LogLevel::INFO, "CLabFactory::GetMaxLevel labName='%s'", labName);
-		}
-		else
-		{
-			Print(LogLevel::WARNING, "CLabFactory::GetMaxLevel labName is null");
+			const int dynMax = specExt->GetMaxLevel(labType);
+			if (dynMax > 0)
+			{
+				Print(LogLevel::INFO,
+					"GetMaxLevel(%d): dynamic override → %d (SpecialtyDefinitionsExt)",
+					labType, dynMax);
+				return dynMax;
+			}
 		}
 
-		// Get our LabDefinitions extension
-		auto* labDefsExt = ExtensionManager::Get<LabDefinitionsExt>();
-		if (labDefsExt)
-		{
-			// Calculate max level dynamically from JSON
-			int dynamicMaxLevel = labDefsExt->GetMaxLevel(std::string(labName));
-			Print(LogLevel::INFO, "Lab '%s': using dynamic max level = %d", labName, dynamicMaxLevel);
-			return dynamicMaxLevel;
-		}
-		
-		// Fallback to original function if extension not available
-		Print(LogLevel::WARNING, "LabDefinitions extension not available, using original max level for '%s'", labName);
-		return ((int(__thiscall*)(void*, const char*))o_func)(thisptr, labName);
+		// ── Step 2: fall through to the original ─────────────────────────────
+		// The vanilla function is a safe integer switch with a bounds check,
+		// so it cannot crash on an unrecognised labType.
+		auto ofn = reinterpret_cast<int(__thiscall*)(void*, int)>(o_func);
+		return ofn(thisptr, labType);
 	}
 
 	auto GetMaxLevel::Apply() -> bool
 	{
-		Print(LogLevel::INFO, "Lab max level patch: Looking for lab max level function...");
-		
+		Print(LogLevel::INFO, "GetMaxLevel patch: locating CLabFactory::GetMaxLevel...");
+
 		const void* address = Signatures::GetAddressOf(Sigs::CLabFactory_GetMaxLevel);
 		if (address)
 		{
-			Print(LogLevel::INFO, "Lab max level patch: Found function at %p, applying hook...", address);
+			Print(LogLevel::INFO, "GetMaxLevel patch: found at %p, applying hook...", address);
+
+			// Log the first 8 bytes at the target for sanity verification.
 			{
 				MEMORY_BASIC_INFORMATION mbi{};
 				if (VirtualQuery(address, &mbi, sizeof(mbi)) && mbi.State == MEM_COMMIT)
 				{
 					const DWORD prot = (mbi.Protect & 0xFF);
-					const bool readable = (prot == PAGE_READONLY) || (prot == PAGE_READWRITE) || (prot == PAGE_WRITECOPY) ||
-						(prot == PAGE_EXECUTE_READ) || (prot == PAGE_EXECUTE_READWRITE) || (prot == PAGE_EXECUTE_WRITECOPY);
+					const bool readable =
+						(prot == PAGE_READONLY)            ||
+						(prot == PAGE_READWRITE)           ||
+						(prot == PAGE_WRITECOPY)           ||
+						(prot == PAGE_EXECUTE_READ)        ||
+						(prot == PAGE_EXECUTE_READWRITE)   ||
+						(prot == PAGE_EXECUTE_WRITECOPY);
 					if (readable)
 					{
 						unsigned char b[8]{};
 						memcpy(b, address, sizeof(b));
-						Print(LogLevel::INFO, "Lab max level patch: target bytes: %02X %02X %02X %02X %02X %02X %02X %02X",
+						Print(LogLevel::INFO,
+							"GetMaxLevel patch: target bytes: %02X %02X %02X %02X %02X %02X %02X %02X",
 							b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]);
 					}
 					else
 					{
-						Print(LogLevel::WARNING, "Lab max level patch: target memory is not readable (protect=0x%X)", (unsigned)mbi.Protect);
+						Print(LogLevel::WARNING,
+							"GetMaxLevel patch: target not readable (protect=0x%X)",
+							static_cast<unsigned>(mbi.Protect));
 					}
 				}
 				else
 				{
-					Print(LogLevel::WARNING, "Lab max level patch: VirtualQuery failed for %p", address);
+					Print(LogLevel::WARNING,
+						"GetMaxLevel patch: VirtualQuery failed for %p", address);
 				}
 			}
-			
+
 			auto* detour = new PLH::x86Detour(
-				(const uintptr_t)address, 
-				std::bit_cast<size_t>(&cb_hook_getMaxLevel), 
+				reinterpret_cast<uintptr_t>(address),
+				std::bit_cast<size_t>(&cb_hook_getMaxLevel),
 				&o_func
 			);
-			
+
 			if (detour->hook())
 			{
-				Print(LogLevel::INFO, "Lab max level patch: Successfully hooked! Dynamic max levels active.");
+				Print(LogLevel::INFO,
+					"GetMaxLevel patch: hooked successfully. "
+					"Dynamic specialty levels active (up to IX = 9 tiers).");
 				return true;
 			}
 			else
 			{
-				Print(LogLevel::ERR, "Lab max level patch: Failed to hook function at %p", address);
+				Print(LogLevel::ERR,
+					"GetMaxLevel patch: failed to hook at %p", address);
 				return false;
 			}
 		}
 		else
 		{
-			Print(LogLevel::WARNING, "Lab max level patch: Could not find function signature");
-			Print(LogLevel::INFO, "Lab max level patch: Dynamic max levels still available via LabDefinitionsExt");
+			Print(LogLevel::WARNING, "GetMaxLevel patch: signature not found");
+			Print(LogLevel::INFO,
+				"GetMaxLevel patch: SpecialtyDefinitionsExt is still loaded "
+				"and available for name-based queries.");
 			return false;
 		}
 	}
