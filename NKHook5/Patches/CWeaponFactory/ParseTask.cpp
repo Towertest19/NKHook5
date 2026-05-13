@@ -50,6 +50,7 @@ void ParseTask::cb_hook(const nfw::map<nfw::string, JsonValue>& jsonData, Weapon
         //Parse our custom json properties
         projectileTask->NO_CLEANUP = false;
         projectileTask->ALWAYS_UPDATE = false;
+        projectileTask->NO_OGC = false;
         if (!jsonData.empty()) {
 			const auto& noCleanup = ReadPrimitive<bool>(jsonData, "NO_CLEANUP");
             if (noCleanup.has_value()) {
@@ -63,6 +64,13 @@ void ParseTask::cb_hook(const nfw::map<nfw::string, JsonValue>& jsonData, Weapon
             if (noOgc.has_value()) {
                 projectileTask->NO_OGC = noOgc.value();
             }
+        }
+
+        if (projectileTask->onlyCollidePastCutOff && projectileTask->cutOffDistance <= 0.0f) {
+            projectileTask->cutOffDistance = 1.0f;
+            Logger::Print(Logger::LogLevel::WARNING,
+                "Projectile [%p] had OnlyCollidePastCutOff with non-positive CutOffDistance; clamped to 1.0",
+                projectileTask);
         }
     }
 

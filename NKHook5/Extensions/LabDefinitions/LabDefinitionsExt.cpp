@@ -93,6 +93,12 @@ void LabDefinitionsExt::UseJsonData(nlohmann::json content)
         }
 }
 
+
+void LabDefinitionsExt::FinalizeTowerRegistration()
+{
+        Print(LogLevel::INFO, "LabDefinitions: finalized %zu definition(s) for dynamic max level lookup", definitions.size());
+}
+
 const std::vector<LabDefinition>& LabDefinitionsExt::GetDefinitions() const
 {
         return this->definitions;

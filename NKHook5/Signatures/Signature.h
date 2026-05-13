@@ -159,7 +159,6 @@ namespace NKHook5::Signatures {
 		/* SpecialtiesScreen */
 		SpecialtiesScreen_CCTOR,
 		/* TowerInfoScreen */
-		TowerInfoScreen_CCTOR,
 		TowerInfoScreen_SetTower,
 		/* ScriptedScreen */
 		ScriptedScreen_VTable,

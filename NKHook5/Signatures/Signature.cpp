@@ -414,11 +414,6 @@ void Signatures::FindAll() {
 		"55 8B EC 6A FF 68 ?? ?? ?? ?? 64 A1 ?? ?? ?? ?? 50 83 EC 08 56 A1 ?? ?? ?? ?? 33 C5 50 8D 45 F4 64 A3 ?? ?? ?? ?? 8B F1 89 75 F0 83 EC 18 8B CC 89 65 EC 6A 11 C7 41 14 0F 00 00 00 C7 41 10 00 00 00 00 68 48 A1 BE 00"
 	);
 	/* TowerInfoScreen */
-	pointerMap[Sigs::TowerInfoScreen_CCTOR] = Signatures::FindFirst(1,
-		// TowerInfoScreen constructor - verified against BTD5-Win.exe.bak at VA=0x7E7730.
-		// The prior relaxed constructor pattern matched hundreds of unrelated screen constructors.
-		"55 8B EC 6A FF 68 ?? ?? ?? ?? 64 A1 ?? ?? ?? ?? 50 83 EC 08 56 A1 ?? ?? ?? ?? 33 C5 50 8D 45 F4 64 A3 ?? ?? ?? ?? 8B F1 89 75 F0 83 EC 18 8B CC 89 65 EC 6A 0F C7 41 14 0F 00 00 00 C7 41 10 00 00 00 00 68 38 A1 BE 00"
-	);
 	// TowerInfoScreen::SetTower - binary-verified unique pattern at VA=0x82C1D0
 	// (BTD5 v4.7 Steam/Kong). The function is a small __thiscall wrapper that:
 	//   1. Returns early (ret 8) if the lo32 of the tower ID is 0.

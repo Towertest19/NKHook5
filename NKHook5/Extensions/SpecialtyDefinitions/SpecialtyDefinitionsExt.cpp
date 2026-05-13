@@ -152,6 +152,14 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
 	}
 }
 
+
+void SpecialtyDefinitionsExt::FinalizeTowerRegistration()
+{
+	Print(LogLevel::INFO,
+		"SpecialtyDefinitions: finalized %zu definition(s) for dynamic max tier lookup",
+		definitions.size());
+}
+
 int SpecialtyDefinitionsExt::GetMaxLevel(int labType) const
 {
 	const auto it = labTypeToIndex.find(labType);

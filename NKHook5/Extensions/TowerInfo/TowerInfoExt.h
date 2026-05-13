@@ -2,9 +2,15 @@
 
 #include <Extensions/JsonExtension.h>
 
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <unordered_map>
+
+namespace NKHook5::Util
+{
+	class FlagManager;
+}
 
 namespace NKHook5
 {
@@ -18,6 +24,7 @@ namespace NKHook5
 			struct TowerInfoDefinition
 			{
 				std::string towerType;
+				uint64_t towerId = 0;
 				bool canBeViewedSpecified = false;
 				bool canBeViewed = true;
 				bool hideUpgradeUnlocks = false; // Hide upgrade unlock notifications
@@ -28,17 +35,21 @@ namespace NKHook5
 			{
 				std::vector<TowerInfoDefinition> definitions;
 				std::unordered_map<std::string, size_t> nameToIndex;
+				std::unordered_map<uint64_t, size_t> idToIndex;
 				bool loadedAny = false;
 			public:
 				TowerInfoExt();
 				virtual const std::vector<TowerInfoDefinition>& GetDefinitions() const;
 				virtual const TowerInfoDefinition* GetDefinition(const std::string& towerType) const;
+				virtual const TowerInfoDefinition* GetDefinition(uint64_t towerId) const;
 				virtual void UseJsonData(nlohmann::json content);
+				virtual void FinalizeTowerRegistration(const Util::FlagManager& towerFlags);
 				
 				// Check if tower should be displayed in info panel
 				// For vanilla towers: always true (backward compatible)
-				// For custom towers: check CanBeViewed flag (default false if not specified)
+				// For custom towers: explicit CanBeViewed=false hides; otherwise show.
 				virtual bool ShouldDisplayInInfoPanel(const std::string& towerType, bool isCustomTower) const;
+				virtual bool ShouldDisplayInInfoPanel(uint64_t towerId, const std::string& towerType, bool isCustomTower) const;
 				
 				// Check if tower should hide upgrade unlock notifications
 				virtual bool ShouldHideUpgradeUnlocks(const std::string& towerType) const;

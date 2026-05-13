@@ -20,9 +20,9 @@ namespace NKHook5::Util {
 		// startBit=20 for bloons (after Dreadbloon), 59 for towers (after GameDummy)
 		uint64_t RegisterBitFlag(const std::string& text, int startBit = 59);
 		//Slowly check if the id is available
-		bool IsIDAvailable(uint64_t id);
-		uint64_t GetFlag(const std::string& name);
-		std::string GetName(uint64_t flag);
-		const std::map<uint64_t, std::string>& GetAll();
+		bool IsIDAvailable(uint64_t id) const;
+		uint64_t GetFlag(const std::string& name) const;
+		std::string GetName(uint64_t flag) const;
+		const std::map<uint64_t, std::string>& GetAll() const;
 	};
 }

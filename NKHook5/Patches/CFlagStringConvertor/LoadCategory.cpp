@@ -6,6 +6,9 @@
 #include "../../Classes/CTowerFactory.h"
 #include "../../Classes/CWeaponFactory.h"
 #include "../../Extensions/StatusEffect/StatusDefinitionsExt.h"
+#include "../../Extensions/LabDefinitions/LabDefinitionsExt.h"
+#include "../../Extensions/SpecialtyDefinitions/SpecialtyDefinitionsExt.h"
+#include "../../Extensions/TowerInfo/TowerInfoExt.h"
 #include "../../Signatures/Signature.h"
 #include "../../Util/FlagManager.h"
 
@@ -38,6 +41,9 @@ namespace NKHook5::Patches::CFlagStringConvertor
 	using namespace NKHook5;
 	using namespace NKHook5::Extensions;
 	using namespace NKHook5::Extensions::StatusEffect;
+	using namespace NKHook5::Extensions::LabDefinitions;
+	using namespace NKHook5::Extensions::SpecialtyDefinitions;
+	using namespace NKHook5::Extensions::TowerInfo;
 	using namespace Signatures;
 
 	static uint64_t o_func;
@@ -59,17 +65,28 @@ namespace NKHook5::Patches::CFlagStringConvertor
 				}
 				Print(LogLevel::INFO, "Old types copied!");
 				Print(LogLevel::INFO, "Injecting new types...");
-				for (const std::string& flagDef : towerFlagExt->GetFlags()) {
-					uint64_t moddedSlot = g_towerFlags.RegisterBitFlag(flagDef);
-					allTowers.emplace_back(flagDef);
-					Print(LogLevel::INFO, "Injected '%s' at slot '%llx'", flagDef.c_str(), moddedSlot);
+				if (towerFlagExt) {
+					for (const std::string& flagDef : towerFlagExt->GetFlags()) {
+						uint64_t moddedSlot = g_towerFlags.RegisterBitFlag(flagDef);
+						allTowers.emplace_back(flagDef);
+						Print(LogLevel::INFO, "Injected '%s' at slot '%llx'", flagDef.c_str(), moddedSlot);
+					}
 				}
 				Print(LogLevel::INFO, "New types injected!");
 
 				auto ofn = std::bit_cast<decltype(&LoadCategory::cb_hook)>(reinterpret_cast<void*>(o_func));
-				return (this->*ofn)(category, allTowers.data(), allTowers.size(), indexMode);
-				//return ((void*(__thiscall*)(void*, int, void*, int, int))o_func)(self, category, allTowers.data(), allTowers.size(), indexMode);
-				//return PLH::FnCast(o_func, &cb_hook)(self, pad, category, towerTypes.data(), towerTypes.size(), indexMode);
+				void* result = (this->*ofn)(category, allTowers.data(), allTowers.size(), indexMode);
+
+				// Finish extension-side registration in a deterministic order after the
+				// tower factory has consumed the augmented category list.
+				if (auto* towerInfoExt = ExtensionManager::Get<TowerInfoExt>())
+					towerInfoExt->FinalizeTowerRegistration(g_towerFlags);
+				if (auto* labExt = ExtensionManager::Get<LabDefinitionsExt>())
+					labExt->FinalizeTowerRegistration();
+				if (auto* specialtyExt = ExtensionManager::Get<SpecialtyDefinitionsExt>())
+					specialtyExt->FinalizeTowerRegistration();
+
+				return result;
 			}
 		}
 
@@ -116,7 +133,7 @@ namespace NKHook5::Patches::CFlagStringConvertor
 				Print(LogLevel::INFO, "Old types copied!");
 				Print(LogLevel::INFO, "Injecting new types...");
 				for (const std::string& flagDef : statusFlagExt->GetFlags()) {
-					// Status effects: use bit flags first (start at 20), then fallback to sequential
+					// Status effects: use bit flags first (start at 20), then fallback to numeric IDs
 					uint64_t moddedSlot = g_bloonStatusFlags.RegisterBitFlag(flagDef, 20);
 					allEffects.emplace_back(flagDef);
 					Print(LogLevel::INFO, "Injected '%s' at slot '%llx'", flagDef.c_str(), moddedSlot);

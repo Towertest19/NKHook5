@@ -19,7 +19,9 @@ namespace NKHook5::Classes {
 
 		char pad_0124[8]{}; //0x0124
 		float angleIncrement{}; //0x012C
-		char pad_0130[60]{}; //0x0130
+		char pad_0130[16]{}; //0x0130
+		float cutOffDistance{}; //0x0140
+		char pad_0144[40]{}; //0x0144
 		CollisionType collisionType = CollisionType::ONCE; //0x016C
 		bool ignoreStatusEffect{}; //0x0170
 		char pad_0171[3]{}; //0x0171
@@ -55,5 +57,6 @@ namespace NKHook5::Classes {
 #pragma pack(pop)
 
 	static_assert(offsetof(CProjectile, pad_00A8) == 0xA8);
+	static_assert(offsetof(CProjectile, cutOffDistance) == 0x140);
 	static_assert(sizeof(CProjectile) == 0x1D0);
 }

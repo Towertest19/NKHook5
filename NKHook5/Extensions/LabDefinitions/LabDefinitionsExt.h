@@ -33,6 +33,7 @@ namespace NKHook5::Extensions::LabDefinitions
                 LabDefinitionsExt();
                 
                 void UseJsonData(nlohmann::json content) override;
+                void FinalizeTowerRegistration();
                 
                 const std::vector<LabDefinition>& GetDefinitions() const;
                 const LabDefinition* GetDefinition(const std::string& name) const;
