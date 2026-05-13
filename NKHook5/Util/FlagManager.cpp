@@ -13,16 +13,16 @@ void FlagManager::Register(uint64_t numeric, const std::string& text)
 
 uint64_t FlagManager::Register(const std::string& text)
 {
-	// Sequential +1 registration - finds next available ID by incrementing
+	// Numeric +1 registration - finds next available ID by incrementing
 	// Skips existing bit flag IDs (1, 2, 4, 8, etc.) and already-registered IDs
 	uint64_t id = nextSequentialId;
 	while (!IsIDAvailable(id)) {
 		id++;
 	}
 	nextSequentialId = id + 1;
-	
+
 	Register(id, text);
-	printf("[FlagManager] Registered '%s' with sequential ID %llu\n", text.c_str(), id);
+	printf("[FlagManager] Registered '%s' with ID %llu\n", text.c_str(), id);
 	return id;
 }
 
@@ -35,18 +35,18 @@ uint64_t FlagManager::RegisterBitFlag(const std::string& text, int startBit)
 		uint64_t flagValue = 1ull << i;
 		if (IsIDAvailable(flagValue)) {
 			Register(flagValue, text);
-			printf("[FlagManager] Registered '%s' with bit flag 0x%llx (bit %d)\n", 
+			printf("[FlagManager] Registered '%s' with bit flag 0x%llx (bit %d)\n",
 				text.c_str(), flagValue, i);
 			return flagValue;
 		}
 	}
-	
-	// Bit slots exhausted - fallback to sequential +1
-	printf("[FlagManager] WARNING: No bit slots for '%s', falling back to sequential ID\n", text.c_str());
+
+	// Bit slots exhausted - fallback to numeric +1
+	printf("[FlagManager] WARNING: No bit slots for '%s', falling back to ID lookup\n", text.c_str());
 	return Register(text);
 }
 
-bool FlagManager::IsIDAvailable(uint64_t id)
+bool FlagManager::IsIDAvailable(uint64_t id) const
 {
 	if (id == 0) {
 		return false;
@@ -71,7 +71,7 @@ bool FlagManager::IsVanilla(uint64_t id)
 	return false;
 }
 
-uint64_t FlagManager::GetFlag(const std::string& name)
+uint64_t FlagManager::GetFlag(const std::string& name) const
 {
 	for (const auto& flagData : flags) {
 		if (flagData.second == name) {
@@ -81,7 +81,7 @@ uint64_t FlagManager::GetFlag(const std::string& name)
 	return 0;
 }
 
-std::string FlagManager::GetName(uint64_t flag)
+std::string FlagManager::GetName(uint64_t flag) const
 {
 	for (const auto& flagData : flags) {
 		if (flagData.first == flag) {
@@ -91,7 +91,7 @@ std::string FlagManager::GetName(uint64_t flag)
 	return "INVALID";
 }
 
-const std::map<uint64_t, std::string>& FlagManager::GetAll()
+const std::map<uint64_t, std::string>& FlagManager::GetAll() const
 {
 	return this->flags;
 }

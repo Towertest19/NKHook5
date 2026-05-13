@@ -2,6 +2,8 @@
 
 #include <Logging/Logger.h>
 
+#include <algorithm>
+
 using namespace Common;
 using namespace Common::Extensions;
 using namespace Common::Logging::Logger;
@@ -99,6 +101,11 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
 			def.maxLevel = content.value("MaxLevel", kVanillaMaxLevel);
 		}
 
+		if (content.contains("MaxLevel"))
+		{
+			def.maxLevel = std::max(def.maxLevel, content.value("MaxLevel", kVanillaMaxLevel));
+		}
+
 		// Build tier summary string for the log line.
 		std::string tierSummary;
 		for (size_t i = 0; i < def.tiers.size(); ++i)
@@ -143,6 +150,14 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
 	{
 		Print(LogLevel::ERR, "SpecialtyDefinitions: failed to parse JSON: %s", e.what());
 	}
+}
+
+
+void SpecialtyDefinitionsExt::FinalizeTowerRegistration()
+{
+	Print(LogLevel::INFO,
+		"SpecialtyDefinitions: finalized %zu definition(s) for dynamic max tier lookup",
+		definitions.size());
 }
 
 int SpecialtyDefinitionsExt::GetMaxLevel(int labType) const

@@ -155,7 +155,6 @@ namespace NKHook5::Signatures {
 		/* Screens */
 		Screens_GetScreenForParadigm,
 		/* TowerInfoScreen */
-		TowerInfoScreen_CCTOR,
 		TowerInfoScreen_SetTower,
 		/* ScriptedScreen */
 		ScriptedScreen_VTable,

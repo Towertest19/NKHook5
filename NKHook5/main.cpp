@@ -127,9 +127,11 @@ int initialize() {
     Print(LogLevel::INFO, "Loading Extensions...");
     Common::Extensions::ExtensionManager::AddAll();
     Common::Extensions::ExtensionManager::AddExtension<NKHook5::Extensions::StatusEffect::StatusDefinitionsExt>();
+    // TowerInfo must be queued before lab/specialty metadata so custom tower
+    // registration immediately has its visibility/unlock metadata available.
+    Common::Extensions::ExtensionManager::AddExtension<NKHook5::Extensions::TowerInfo::TowerInfoExt>();
     Common::Extensions::ExtensionManager::AddExtension<NKHook5::Extensions::LabDefinitions::LabDefinitionsExt>();
     Common::Extensions::ExtensionManager::AddExtension<NKHook5::Extensions::SpecialtyDefinitions::SpecialtyDefinitionsExt>();
-    Common::Extensions::ExtensionManager::AddExtension<NKHook5::Extensions::TowerInfo::TowerInfoExt>();
     Print(LogLevel::INFO, "All extensions loaded!");
 
     Print(LogLevel::INFO, "Loading all patches...");

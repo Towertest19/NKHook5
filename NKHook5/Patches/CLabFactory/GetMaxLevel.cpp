@@ -35,13 +35,15 @@ namespace NKHook5::Patches::CLabFactory
 	// (values 1–21, with 13 as the vanilla out-of-range default).
 	//
 	// With NKHook5 active the max level is DYNAMIC:
-	//   1. SpecialtyDefinitionsExt is queried first.  If a SpecialtyDefinitions
+	//   1. LabDefinitionsExt is queried first so MonkeyLabScreen can extend
+	//      regular lab caps directly from the JSON Upgrades array.
+	//   2. SpecialtyDefinitionsExt is queried next. If a SpecialtyDefinitions
 	//      JSON in Assets/JSON/SpecialtyDefinitions/ declares a matching LabType,
 	//      the level derived from its Roman-numeral Effects keys is returned
-	//      (I=1 … IX=9, "X" drawback excluded).  This makes it possible to
+	//      (I=1 … IX=9, "X" drawback excluded). This makes it possible to
 	//      extend any specialty building to up to 9 upgrade tiers.
-	//   2. If no override is registered the original function is called so all
-	//      vanilla specialty buildings continue to work unchanged.
+	//   3. If no override is registered the original function is called so all
+	//      vanilla lab and specialty buildings continue to work unchanged.
 	//
 	// __fastcall -> __thiscall ABI bridge (x86):
 	//   ECX    -> thisptr   (CLabFactory instance)
@@ -49,7 +51,24 @@ namespace NKHook5::Patches::CLabFactory
 	//   [SP+4] -> labType   (integer lab-type index passed by the game)
 	int __fastcall cb_hook_getMaxLevel(void* thisptr, int /*pad*/, int labType)
 	{
-		// ── Step 1: check SpecialtyDefinitionsExt ────────────────────────────
+		// ── Step 1: check LabDefinitionsExt ──────────────────────────────────
+		// MonkeyLabScreen asks for the same integer lab-type max level as the
+		// factory.  Let LabDefinitions JSON extend that cap from its Upgrades
+		// array before falling through to specialty metadata or vanilla logic.
+		auto* labExt = ExtensionManager::Get<LabDefinitionsExt>();
+		if (labExt)
+		{
+			const int dynMax = labExt->GetMaxLevel(labType);
+			if (dynMax > 0)
+			{
+				Print(LogLevel::INFO,
+					"GetMaxLevel(%d): dynamic override -> %d (LabDefinitionsExt)",
+					labType, dynMax);
+				return dynMax;
+			}
+		}
+
+		// ── Step 2: check SpecialtyDefinitionsExt ────────────────────────────
 		// A positive return value means a JSON definition was found whose
 		// Effects map has at least one upgrade tier.  Return it directly.
 		auto* specExt = ExtensionManager::Get<SpecialtyDefinitionsExt>();
@@ -59,13 +78,13 @@ namespace NKHook5::Patches::CLabFactory
 			if (dynMax > 0)
 			{
 				Print(LogLevel::INFO,
-					"GetMaxLevel(%d): dynamic override → %d (SpecialtyDefinitionsExt)",
+					"GetMaxLevel(%d): dynamic override -> %d (SpecialtyDefinitionsExt)",
 					labType, dynMax);
 				return dynMax;
 			}
 		}
 
-		// ── Step 2: fall through to the original ─────────────────────────────
+		// ── Step 3: fall through to the original ─────────────────────────────
 		// The vanilla function is a safe integer switch with a bounds check,
 		// so it cannot crash on an unrecognised labType.
 		auto ofn = reinterpret_cast<int(__thiscall*)(void*, int)>(o_func);
@@ -126,7 +145,7 @@ namespace NKHook5::Patches::CLabFactory
 			{
 				Print(LogLevel::INFO,
 					"GetMaxLevel patch: hooked successfully. "
-					"Dynamic specialty levels active (up to IX = 9 tiers).");
+					"Dynamic lab/specialty levels active (labs from Upgrades, specialties up to IX = 9 tiers).");
 				return true;
 			}
 			else

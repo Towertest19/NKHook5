@@ -8,21 +8,21 @@ namespace NKHook5::Util {
 		uint64_t nextSequentialId; // Per-manager counter for +1 lookup
 	public:
 		static bool IsVanilla(uint64_t id);
-		// Check if ID is a bit flag (proper targeting) vs sequential ID
+		// Check if ID is a bit flag (proper targeting) vs numeric ID
 		static bool IsBitFlag(uint64_t id) { return (id & (id - 1)) == 0 && id != 0; }
 
 		FlagManager();
 		//Registers at a specific ID
 		void Register(uint64_t numeric, const std::string& text);
-		//Registers at next available sequential ID (+1 lookup, skips taken IDs)
+		//Registers at next available numeric ID (+1 lookup, skips taken IDs)
 		uint64_t Register(const std::string& text);
 		//Registers at next available bit flag starting from startBit
 		// startBit=20 for bloons (after Dreadbloon), 59 for towers (after GameDummy)
 		uint64_t RegisterBitFlag(const std::string& text, int startBit = 59);
 		//Slowly check if the id is available
-		bool IsIDAvailable(uint64_t id);
-		uint64_t GetFlag(const std::string& name);
-		std::string GetName(uint64_t flag);
-		const std::map<uint64_t, std::string>& GetAll();
+		bool IsIDAvailable(uint64_t id) const;
+		uint64_t GetFlag(const std::string& name) const;
+		std::string GetName(uint64_t flag) const;
+		const std::map<uint64_t, std::string>& GetAll() const;
 	};
 }

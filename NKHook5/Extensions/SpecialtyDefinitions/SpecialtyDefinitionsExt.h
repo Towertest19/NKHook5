@@ -50,6 +50,7 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 		SpecialtyDefinitionsExt();
 
 		void UseJsonData(nlohmann::json content) override;
+		void FinalizeTowerRegistration();
 
 		// Returns the dynamic max level for the given game labType integer,
 		// or -1 if no definition is registered for that labType.
