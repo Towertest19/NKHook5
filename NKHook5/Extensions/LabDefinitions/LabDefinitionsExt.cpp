@@ -3,6 +3,7 @@
 #include <Logging/Logger.h>
 
 #include <cstring>
+#include <algorithm>
 
 using namespace Common;
 using namespace Common::Extensions;
@@ -147,4 +148,18 @@ int LabDefinitionsExt::GetMaxLevel(int labType) const
         }
 
         return -1;
+}
+
+int LabDefinitionsExt::GetFallbackMaxLevel(int vanillaMaxLevel) const
+{
+        int best = -1;
+        for (const auto& def : definitions)
+        {
+                // Untyped lab definitions are modded definitions that cannot be
+                // matched to the game's integer lab id. If any of them extends
+                // beyond the vanilla result, use the highest JSON Upgrades count.
+                if (def.labType < 0 && def.maxLevel > vanillaMaxLevel)
+                        best = std::max(best, def.maxLevel);
+        }
+        return best;
 }

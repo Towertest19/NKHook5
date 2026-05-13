@@ -45,13 +45,19 @@ namespace
 
 	bool IsRuntimeEditorTogglePressed()
 	{
-		static bool wasRightShiftDown = false;
-		const bool isRightShiftDown = (GetAsyncKeyState(VK_RSHIFT) & 0x8000) != 0;
-		const bool pressed = isRightShiftDown && !wasRightShiftDown;
-		wasRightShiftDown = isRightShiftDown;
+		static bool wasEditorToggleDown = false;
 
-		// Keep ImGui's key state as a fallback for environments where the backend
-		// produces a key press but Win32's async state is unavailable or filtered.
+		// BTD5 v4.7 can miss the side-specific VK_RSHIFT async state depending
+		// on focus and keyboard layout. Latch the physical right-shift key, the
+		// generic shift state, and ImGui's translated right-shift event so the
+		// runtime editor still toggles when the Win32 backend receives input.
+		const bool isRightShiftDown = (GetAsyncKeyState(VK_RSHIFT) & 0x8000) != 0;
+		const bool isAnyShiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+		const bool imguiRightShiftDown = ImGui::IsKeyDown(ImGuiKey_RightShift);
+		const bool toggleDown = isRightShiftDown || (isAnyShiftDown && imguiRightShiftDown);
+		const bool pressed = toggleDown && !wasEditorToggleDown;
+		wasEditorToggleDown = toggleDown;
+
 		return pressed || ImGui::IsKeyPressed(ImGuiKey_RightShift, false);
 	}
 

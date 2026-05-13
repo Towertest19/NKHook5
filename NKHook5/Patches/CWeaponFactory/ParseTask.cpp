@@ -67,9 +67,8 @@ void ParseTask::cb_hook(const nfw::map<nfw::string, JsonValue>& jsonData, Weapon
         }
 
         if (projectileTask->onlyCollidePastCutOff && projectileTask->cutOffDistance <= 0.0f) {
-            projectileTask->cutOffDistance = 1.0f;
             Logger::Print(Logger::LogLevel::WARNING,
-                "Projectile [%p] had OnlyCollidePastCutOff with non-positive CutOffDistance; clamped to 1.0",
+                "Projectile [%p] has OnlyCollidePastCutOff with non-positive CutOffDistance; leaving game-computed cutoff unchanged",
                 projectileTask);
         }
     }

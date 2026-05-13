@@ -113,6 +113,13 @@ namespace NKHook5::Patches::TowerInfoScreen
 		auto* towerInfoExt = ExtensionManager::Get<TowerInfoExt>();
 		std::string towerName = g_towerFlags.GetName(towerId);
 		const bool registeredByFlags = !towerName.empty() && towerName != "INVALID";
+		if (towerInfoExt && registeredByFlags)
+		{
+			// TowerInfo definitions can be loaded before tower type hijacking has
+			// assigned the final 64-bit bit flag. Late-bind on first use so the
+			// info-screen hook follows the same name -> id mapping as injection.
+			towerInfoExt->BindDefinitionId(towerName, towerId);
+		}
 		const bool registeredByTowerInfo = towerInfoExt && towerInfoExt->GetDefinition(towerId) != nullptr;
 
 		if (!registeredByFlags && !registeredByTowerInfo)
@@ -142,8 +149,8 @@ namespace NKHook5::Patches::TowerInfoScreen
 			return;
 		}
 
-		Print(LogLevel::INFO, "TowerInfoScreen: Displaying custom tower '%s' (ID: %llu)",
-			towerName.c_str(), towerId);
+		Print(LogLevel::INFO, "TowerInfoScreen: Displaying custom tower '%s' (ID: %llu, byFlags=%s, byTowerInfo=%s)",
+			towerName.c_str(), towerId, registeredByFlags ? "true" : "false", registeredByTowerInfo ? "true" : "false");
 		CallSetTower(thisptr, pad, towerId);
 	}
 }

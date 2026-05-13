@@ -57,6 +57,10 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 		// A result of -1 means the caller should fall through to the original.
 		int GetMaxLevel(int labType) const;
 
+		// Returns the highest JSON-derived tier that should extend an otherwise
+		// unmapped/custom specialty lab type, or -1 if no loaded definition extends it.
+		int GetFallbackMaxLevel(int vanillaMaxLevel) const;
+
 		// Returns the dynamic max level by specialty name (LOC key or bare
 		// name), or -1 if not registered.
 		int GetMaxLevel(const std::string& name) const;

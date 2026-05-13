@@ -1,5 +1,6 @@
 #include "PatchManager.h"
 #include <iostream>
+#include <Logging/Logger.h>
 
 #include "CApp/Init_Debugger_Patch.h"
 #include "CApplyStatusEffectTask/Fire.h"
@@ -48,6 +49,7 @@ using namespace NKHook5::Patches;
 
 void PatchManager::ApplyAll()
 {
+    patches->clear();
     PatchManager::ApplyPatch(new CApp::Init_Debugger_Patch());
     PatchManager::ApplyPatch(new CApplyStatusEffectTask::Fire());
     PatchManager::ApplyPatch(new CBaseFileIO::FileExists());
@@ -90,6 +92,9 @@ void PatchManager::ApplyAll()
     PatchManager::ApplyPatch(new Unknown::CrtMalloc());
     //PatchManager::ApplyPatch(new Unknown::GetDeltaLock60FPS());
     PatchManager::ApplyPatch(new Unknown::WinMain());
+
+    Common::Logging::Logger::Print(Common::Logging::Logger::LogLevel::INFO,
+        "Patch loading complete: %zu patch(es) active.", patches->size());
 }
 
 void PatchManager::ApplyPatch(IPatch* toAdd)
@@ -97,10 +102,13 @@ void PatchManager::ApplyPatch(IPatch* toAdd)
     if(toAdd->Apply())
     {
         PatchManager::patches->push_back(toAdd);
-        std::cout << "Successfully applied \'" << toAdd->GetName() << "\' patch!" << std::endl;
+        Common::Logging::Logger::Print(Common::Logging::Logger::LogLevel::INFO,
+            "Successfully applied \'%s\' patch!", toAdd->GetName().c_str());
     }
     else
     {
-        std::cout << "Failed to apply patch: " << toAdd->GetName() << std::endl;
+        Common::Logging::Logger::Print(Common::Logging::Logger::LogLevel::ERR,
+            "Failed to apply patch: %s", toAdd->GetName().c_str());
+        delete toAdd;
     }
 }
