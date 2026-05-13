@@ -148,7 +148,7 @@ namespace NKHook5::Patches::CFlagStringConvertor
 				Print(LogLevel::INFO, "Old types copied!");
 				Print(LogLevel::INFO, "Injecting new types...");
 				for (const std::string& flagDef : weaponFlagExt->GetFlags()) {
-					// Weapons: use +1 sequential IDs
+					// Weapons: use +1 numeric IDs
 					uint64_t moddedSlot = g_weaponFlags.Register(flagDef);
 					allWeapons.emplace_back(flagDef);
 					Print(LogLevel::INFO, "Injected '%s' at slot '%llx'", flagDef.c_str(), moddedSlot);
