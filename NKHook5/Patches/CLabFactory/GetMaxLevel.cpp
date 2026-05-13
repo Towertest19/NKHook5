@@ -84,11 +84,35 @@ namespace NKHook5::Patches::CLabFactory
 			}
 		}
 
-		// ── Step 3: fall through to the original ─────────────────────────────
+		// ── Step 3: ask vanilla, then let untyped JSON definitions extend it ──
 		// The vanilla function is a safe integer switch with a bounds check,
-		// so it cannot crash on an unrecognised labType.
+		// so it cannot crash on an unrecognised labType. Some mods do not know the
+		// integer labType assigned by the game; in that case we still honour loaded
+		// JSON definitions by extending the vanilla cap to the highest JSON tier.
 		auto ofn = reinterpret_cast<int(__thiscall*)(void*, int)>(o_func);
-		return ofn(thisptr, labType);
+		const int vanillaMax = ofn(thisptr, labType);
+
+		int fallbackMax = vanillaMax;
+		if (labExt)
+		{
+			const int dynMax = labExt->GetFallbackMaxLevel(vanillaMax);
+			if (dynMax > fallbackMax)
+				fallbackMax = dynMax;
+		}
+		if (specExt)
+		{
+			const int dynMax = specExt->GetFallbackMaxLevel(vanillaMax);
+			if (dynMax > fallbackMax)
+				fallbackMax = dynMax;
+		}
+
+		if (fallbackMax != vanillaMax)
+		{
+			Print(LogLevel::INFO,
+				"GetMaxLevel(%d): untyped JSON fallback extended vanilla %d -> %d",
+				labType, vanillaMax, fallbackMax);
+		}
+		return fallbackMax;
 	}
 
 	auto GetMaxLevel::Apply() -> bool

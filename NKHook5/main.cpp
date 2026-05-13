@@ -136,7 +136,6 @@ int initialize() {
 
     Print(LogLevel::INFO, "Loading all patches...");
     NKHook5::Patches::PatchManager::ApplyAll();
-    Print(LogLevel::INFO, "Patch loading complete! (Some patches may have failed - check logs for details)");
 
     Print(LogLevel::INFO, "Loaded NKHook5!");
 #ifdef _DEBUG

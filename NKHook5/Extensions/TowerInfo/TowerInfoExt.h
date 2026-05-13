@@ -44,6 +44,7 @@ namespace NKHook5
 				virtual const TowerInfoDefinition* GetDefinition(uint64_t towerId) const;
 				virtual void UseJsonData(nlohmann::json content);
 				virtual void FinalizeTowerRegistration(const Util::FlagManager& towerFlags);
+				virtual bool BindDefinitionId(const std::string& towerType, uint64_t towerId);
 				
 				// Check if tower should be displayed in info panel
 				// For vanilla towers: always true (backward compatible)

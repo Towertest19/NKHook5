@@ -7,6 +7,8 @@
 #include <backends/imgui_impl_win32.h>
 #include <backends/imgui_impl_opengl3_loader.h>
 
+#include <Windows.h>
+
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 extern int32_t maxProjectilesTotal;
 extern int32_t maxProjectileUpdates;
@@ -82,6 +84,20 @@ namespace NKHook5
                 return PLH::FnCast(o_func, &hkSwapbuffers)(hdc);
             }
 
+            static bool IsExecutableAddress(uintptr_t address)
+            {
+                MEMORY_BASIC_INFORMATION mbi{};
+                if (address == 0 || !VirtualQuery(reinterpret_cast<LPCVOID>(address), &mbi, sizeof(mbi)))
+                    return false;
+
+                const DWORD protect = mbi.Protect & 0xFF;
+                return mbi.State == MEM_COMMIT &&
+                    (protect == PAGE_EXECUTE ||
+                     protect == PAGE_EXECUTE_READ ||
+                     protect == PAGE_EXECUTE_READWRITE ||
+                     protect == PAGE_EXECUTE_WRITECOPY);
+            }
+
             auto Swapbuffers::Apply() -> bool
             {
                 HMODULE hOpenGL = GetModuleHandleA("OPENGL32.dll");
@@ -90,7 +106,7 @@ namespace NKHook5
                     return false;
                 }
                 const uintptr_t address = (const uintptr_t)GetProcAddress(hOpenGL, "wglSwapBuffers");
-                if (address && Utils::IsAddressExecutable(address))
+                if (address && IsExecutableAddress(address))
                 {
                     PLH::x86Detour* detour = new PLH::x86Detour(address, (const uintptr_t)&hkSwapbuffers, &o_func);
                     if (detour->hook())
@@ -107,7 +123,7 @@ namespace NKHook5
                 else
                 {
                     Common::Logging::Logger::Print(Common::Logging::Logger::LogLevel::ERR, 
-                        "Patch '%s': Invalid or missing address", GetName().c_str());
+                        "Patch '%s': Invalid or missing executable address for wglSwapBuffers (%p)", GetName().c_str(), (void*)address);
                     return false;
                 }
             }

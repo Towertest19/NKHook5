@@ -116,6 +116,26 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 	}
 }
 
+
+bool TowerInfoExt::BindDefinitionId(const std::string& towerType, uint64_t towerId)
+{
+	if (towerId == 0 || towerType.empty() || towerType == "INVALID")
+		return false;
+
+	const auto it = nameToIndex.find(towerType);
+	if (it == nameToIndex.end())
+		return false;
+
+	auto& def = definitions[it->second];
+	if (def.towerId != towerId)
+	{
+		def.towerId = towerId;
+		Print(LogLevel::INFO, "TowerInfo: late-bound '%s' to tower ID %llu", towerType.c_str(), towerId);
+	}
+	idToIndex[towerId] = it->second;
+	return true;
+}
+
 bool TowerInfoExt::ShouldDisplayInInfoPanel(const std::string& towerType, bool isCustomTower) const
 {
 	if (towerType.empty() || towerType == "INVALID")
@@ -147,6 +167,7 @@ bool TowerInfoExt::ShouldDisplayInInfoPanel(const std::string& towerType, bool i
 	// GameDummy or assigned fallback IDs.
 	return true;
 }
+
 
 bool TowerInfoExt::ShouldDisplayInInfoPanel(uint64_t towerId, const std::string& towerType, bool isCustomTower) const
 {

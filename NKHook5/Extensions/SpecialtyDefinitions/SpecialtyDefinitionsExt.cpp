@@ -168,6 +168,21 @@ int SpecialtyDefinitionsExt::GetMaxLevel(int labType) const
 	return -1; // not registered — caller should fall through to original
 }
 
+
+int SpecialtyDefinitionsExt::GetFallbackMaxLevel(int vanillaMaxLevel) const
+{
+	int best = -1;
+	for (const auto& def : definitions)
+	{
+		// Definitions without LabType are still valid modded specialty definitions.
+		// Let them extend an otherwise unmapped/custom specialty level cap using
+		// the highest Roman-numeral Effects tier present in JSON.
+		if (def.labType < 0 && def.maxLevel > vanillaMaxLevel)
+			best = std::max(best, def.maxLevel);
+	}
+	return best;
+}
+
 int SpecialtyDefinitionsExt::GetMaxLevel(const std::string& name) const
 {
 	const auto it = nameToIndex.find(name);
