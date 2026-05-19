@@ -111,6 +111,13 @@ namespace NKHook5::Patches::TowerInfoScreen
 		}
 
 		auto* towerInfoExt = ExtensionManager::Get<TowerInfoExt>();
+		// The hook can run before tower categories are injected during preload.
+		// Defer all custom filtering until tower flag registration exists.
+		if (g_towerFlags.GetAll().empty())
+		{
+			CallSetTower(thisptr, pad, towerId);
+			return;
+		}
 		std::string towerName = g_towerFlags.GetName(towerId);
 		const bool registeredByFlags = !towerName.empty() && towerName != "INVALID";
 		if (towerInfoExt && registeredByFlags)

@@ -56,7 +56,14 @@ namespace NKHook5
                 {
                     nfw::string effectFile = "Assets/JSON/StatusDefinitions/" + nfw::string(flag) + ".status";
                     Classes::CUnzippedFile* unzipped = assetsArchive->LoadFrom(effectFile, error);
+                    if (!unzipped)
+                    {
+                        if (error.length() > 0)
+                            Print(LogLevel::WARNING, "StatusDefinitions load failed for '%s': %s", effectFile.c_str(), error.c_str());
+                        continue;
+                    }
                     statusDefs->UseData(unzipped->fileContent, unzipped->fileSize);
+                    delete unzipped;
                 }
 
                 // Load LabDefinitions JSON files
