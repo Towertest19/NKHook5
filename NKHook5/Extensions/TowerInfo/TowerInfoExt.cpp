@@ -44,11 +44,12 @@ void TowerInfoExt::UseJsonData(nlohmann::json content)
 			def.canBeViewed = content["CanBeViewed"].get<bool>();
 		}
 
-		// HideUpgradeUnlocks flag - prevents XP unlock notifications
-		if (content.contains("HideUpgradeUnlocks"))
-		{
-			def.hideUpgradeUnlocks = content["HideUpgradeUnlocks"].get<bool>();
-		}
+		// New clearer field: CanBeUnlocked (default true).
+		if (content.contains("CanBeUnlocked"))
+			def.canBeUnlocked = content["CanBeUnlocked"].get<bool>();
+		// Backward compatibility with legacy field name.
+		else if (content.contains("HideUpgradeUnlocks"))
+			def.canBeUnlocked = !content["HideUpgradeUnlocks"].get<bool>();
 
 		// Custom description for info panel
 		if (content.contains("InfoDescription"))
@@ -60,11 +61,11 @@ void TowerInfoExt::UseJsonData(nlohmann::json content)
 		nameToIndex[def.towerType] = definitions.size();
 		definitions.emplace_back(std::move(def));
 
-		Print(LogLevel::INFO, "Loaded TowerDefinition: '%s' (CanBeViewed=%s%s, HideUpgradeUnlocks=%s)",
+		Print(LogLevel::INFO, "Loaded TowerDefinition: '%s' (CanBeViewed=%s%s, CanBeUnlocked=%s)",
 			definitions.back().towerType.c_str(),
 			definitions.back().canBeViewed ? "true" : "false",
 			definitions.back().canBeViewedSpecified ? "" : "/unspecified",
-			definitions.back().hideUpgradeUnlocks ? "true" : "false");
+			definitions.back().canBeUnlocked ? "true" : "false");
 	}
 	catch (const std::exception& e)
 	{
@@ -184,7 +185,7 @@ bool TowerInfoExt::ShouldHideUpgradeUnlocks(const std::string& towerType) const
 	const TowerInfoDefinition* def = GetDefinition(towerType);
 	if (def)
 	{
-		return def->hideUpgradeUnlocks;
+		return !def->canBeUnlocked;
 	}
 	return false; // Default: show upgrade unlocks
 }

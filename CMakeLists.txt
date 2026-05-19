@@ -4,6 +4,7 @@ project(NKHook5 VERSION 1.0 LANGUAGES CXX)
 include(FetchContent)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # Only Visual Studio platforms are supported
 if (NOT CMAKE_GENERATOR_PLATFORM STREQUAL Win32)
@@ -29,12 +30,9 @@ add_compile_definitions(_ITERATOR_DEBUG_LEVEL=0)
 add_compile_options(/openmp)
 
 if(MSVC)
-    add_compile_options(
-            $<$<CONFIG:>:/MT> #---------|
-            $<$<CONFIG:Debug>:/MTd> #---|-- Statically link the runtime libraries
-            $<$<CONFIG:Release>:/MT> #--|
-            $<$<CONFIG:RelWithDebInfo>:/MT> #--|
-    )
+    # Use CMAKE_MSVC_RUNTIME_LIBRARY above so fetched subprojects inherit the
+    # same CRT flavor. This avoids Debug link failures from /MDd vs /MTd
+    # mismatches when BuildAll/BuildFast compile all targets.
 endif()
 
 #Fetch & Install PolyHook2
