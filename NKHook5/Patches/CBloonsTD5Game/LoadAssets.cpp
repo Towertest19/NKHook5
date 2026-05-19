@@ -4,10 +4,13 @@
 #include "../../Classes/CBloonsTD5Game.h"
 #include "../../Classes/CZipFile.h"
 #include "../../Extensions/StatusEffect/StatusDefinitionsExt.h"
+#include "../../Extensions/LabDefinitions/LabDefinitionsExt.h"
+#include "../../Extensions/SpecialtyDefinitions/SpecialtyDefinitionsExt.h"
 #include "../../Signatures/Signature.h"
 
 #include <Extensions/ExtensionManager.h>
 #include <Extensions/StatusEffect/StatusFlagsExt.h>
+#include <Files/ZipBase.h>
 #include <Logging/Logger.h>
 
 namespace NKHook5
@@ -55,6 +58,63 @@ namespace NKHook5
                     Classes::CUnzippedFile* unzipped = assetsArchive->LoadFrom(effectFile, error);
                     statusDefs->UseData(unzipped->fileContent, unzipped->fileSize);
                 }
+
+                // Load LabDefinitions JSON files
+                auto labDefs = ExtensionManager::Get<LabDefinitionsExt>();
+                if (labDefs)
+                {
+                    Print(LogLevel::INFO, "Loading LabDefinitions from BTD5.jet...");
+                    // Open the archive with ZipBase to enumerate entries
+                    Common::Files::ZipBase zipBase;
+                    if (zipBase.Open("./Assets/BTD5.jet"))
+                    {
+                        zipBase.SetPassword("Q%_{6#Px]]");
+                        auto entries = zipBase.GetEntries();
+                        for (const auto& entry : entries)
+                        {
+                            if (entry.find("Assets/JSON/LabDefinitions/") != std::string::npos &&
+                                entry.find(".json") != std::string::npos)
+                            {
+                                Print(LogLevel::INFO, "Loading LabDefinitions from: %s", entry.c_str());
+                                auto data = zipBase.ReadEntry(entry);
+                                if (!data.empty())
+                                {
+                                    labDefs->UseData(data.data(), data.size());
+                                }
+                            }
+                        }
+                        zipBase.Close();
+                    }
+                }
+
+                // Load SpecialtyDefinitions JSON files
+                auto specDefs = ExtensionManager::Get<SpecialtyDefinitionsExt>();
+                if (specDefs)
+                {
+                    Print(LogLevel::INFO, "Loading SpecialtyDefinitions from BTD5.jet...");
+                    // Open the archive with ZipBase to enumerate entries
+                    Common::Files::ZipBase zipBase;
+                    if (zipBase.Open("./Assets/BTD5.jet"))
+                    {
+                        zipBase.SetPassword("Q%_{6#Px]]");
+                        auto entries = zipBase.GetEntries();
+                        for (const auto& entry : entries)
+                        {
+                            if (entry.find("Assets/JSON/SpecialtyDefinitions/") != std::string::npos &&
+                                entry.find(".json") != std::string::npos)
+                            {
+                                Print(LogLevel::INFO, "Loading SpecialtyDefinitions from: %s", entry.c_str());
+                                auto data = zipBase.ReadEntry(entry);
+                                if (!data.empty())
+                                {
+                                    specDefs->UseData(data.data(), data.size());
+                                }
+                            }
+                        }
+                        zipBase.Close();
+                    }
+                }
+
                 Print(LogLevel::INFO, "Custom assets loaded!");
 
                 Print(LogLevel::INFO, "BTD5 began loading assets...");

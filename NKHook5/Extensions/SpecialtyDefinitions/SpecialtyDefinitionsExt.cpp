@@ -30,7 +30,7 @@ static constexpr std::array<std::pair<const char*, int>, 9> kTierOrder = {{
 // ---------------------------------------------------------------------------
 
 SpecialtyDefinitionsExt::SpecialtyDefinitionsExt()
-	: JsonExtension("SpecialtyDefinitions", "Assets/JSON/SpecialtyDefinitions/*.json")
+	: JsonExtension("SpecialtyDefinitions", "*/Assets/JSON/SpecialtyDefinitions/*.json")
 {
 }
 
@@ -50,9 +50,23 @@ SpecialtyDefinitionsExt::SpecialtyDefinitionsExt()
 
 void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
 {
+	Print(LogLevel::INFO, "SpecialtyDefinitionsExt::UseJsonData called, JSON type: %s, is_array: %s",
+		content.type_name(), content.is_array() ? "true" : "false");
+
 	if (content.empty())
 	{
 		Print(LogLevel::ERR, "SpecialtyDefinitions: received empty JSON");
+		return;
+	}
+
+	// Handle array of definitions
+	if (content.is_array())
+	{
+		Print(LogLevel::INFO, "SpecialtyDefinitionsExt: Processing array of %zu definitions", content.size());
+		for (const auto& item : content)
+		{
+			UseJsonData(item);
+		}
 		return;
 	}
 

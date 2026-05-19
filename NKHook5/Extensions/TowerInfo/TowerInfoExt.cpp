@@ -11,7 +11,7 @@ using namespace NKHook5;
 using namespace NKHook5::Extensions;
 using namespace NKHook5::Extensions::TowerInfo;
 
-TowerInfoExt::TowerInfoExt() : JsonExtension("TowerInfo", "Assets/JSON/TowerDefinitions/*.tower")
+TowerInfoExt::TowerInfoExt() : JsonExtension("TowerInfo", "*/Assets/JSON/TowerDefinitions/*.tower")
 {
 }
 

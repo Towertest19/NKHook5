@@ -10,7 +10,7 @@ using namespace NKHook5::Extensions;
 using namespace NKHook5::Extensions::StatusEffect;
 
 //Just needs to implements the flags extension for towers only
-StatusDefinitionsExt::StatusDefinitionsExt() : JsonExtension("StatusDefinitions", "Assets/JSON/StatusDefinitions/*.status")
+StatusDefinitionsExt::StatusDefinitionsExt() : JsonExtension("StatusDefinitions", "*/Assets/JSON/StatusDefinitions/*.status")
 {
 }
 

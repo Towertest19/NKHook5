@@ -12,15 +12,29 @@ using namespace NKHook5;
 using namespace NKHook5::Extensions;
 using namespace NKHook5::Extensions::LabDefinitions;
 
-LabDefinitionsExt::LabDefinitionsExt() : JsonExtension("LabDefinitions", "Assets/JSON/LabDefinitions/*.json")
+LabDefinitionsExt::LabDefinitionsExt() : JsonExtension("LabDefinitions", "*/Assets/JSON/LabDefinitions/*.json")
 {
 }
 
 void LabDefinitionsExt::UseJsonData(nlohmann::json content)
 {
+        Print(LogLevel::INFO, "LabDefinitionsExt::UseJsonData called, JSON type: %s, is_array: %s",
+                content.type_name(), content.is_array() ? "true" : "false");
+
         if (content.empty())
         {
                 Print(LogLevel::ERR, "Received empty json data for a LabDefinition");
+                return;
+        }
+
+        // Handle array of definitions
+        if (content.is_array())
+        {
+                Print(LogLevel::INFO, "LabDefinitionsExt: Processing array of %zu definitions", content.size());
+                for (const auto& item : content)
+                {
+                        UseJsonData(item);
+                }
                 return;
         }
 
@@ -61,7 +75,7 @@ void LabDefinitionsExt::UseJsonData(nlohmann::json content)
                 else
                 {
                         // No upgrades array — vanilla specialty buildings cap at tier IV (4).
-                        def.maxLevel = 4;
+                        def.maxLevel = 13;
                         Print(LogLevel::WARNING, "Lab '%s': no upgrades found, using vanilla default max level = %d",
                                 def.name.c_str(), def.maxLevel);
                 }
