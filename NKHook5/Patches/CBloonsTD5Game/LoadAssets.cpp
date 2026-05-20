@@ -112,6 +112,16 @@ namespace NKHook5
                     "Assets/JSON/SpecialtyDefinitions/",
                     ExtensionManager::Get<SpecialtyDefinitionsExt>());
 
+                LoadDefinitionsFromArchive(
+                    "Hijacking lab definitions for dynamic max levelling...",
+                    "Assets/JSON/LabDefinitions/",
+                    ExtensionManager::Get<LabDefinitionsExt>());
+
+                LoadDefinitionsFromArchive(
+                    "Hijacking specialty definitions for dynamic max levelling...",
+                    "Assets/JSON/SpecialtyDefinitions/",
+                    ExtensionManager::Get<SpecialtyDefinitionsExt>());
+
                 Print(LogLevel::INFO, "Custom assets loaded!");
 
                 Print(LogLevel::INFO, "BTD5 began loading assets...");
