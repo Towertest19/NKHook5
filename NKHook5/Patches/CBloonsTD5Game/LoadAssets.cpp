@@ -105,12 +105,13 @@ namespace NKHook5
                 loadJsonDefinitions(
                     "Hijacking lab definitions for dynamic max levelling...",
                     "Assets/JSON/LabDefinitions/",
-                    ExtensionManager::Get<Extensions::LabDefinitions::LabDefinitionsExt>());
+                    ExtensionManager::Get<NKHook5::Extensions::LabDefinitions::LabDefinitionsExt>());
 
                 loadJsonDefinitions(
                     "Hijacking specialty definitions for dynamic max levelling...",
                     "Assets/JSON/SpecialtyDefinitions/",
-                    ExtensionManager::Get<Extensions::SpecialtyDefinitions::SpecialtyDefinitionsExt>());
+                    ExtensionManager::Get<NKHook5::Extensions::SpecialtyDefinitions::SpecialtyDefinitionsExt>());
+
 
                 Print(LogLevel::INFO, "Custom assets loaded!");
 
