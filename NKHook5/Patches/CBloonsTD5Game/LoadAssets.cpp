@@ -74,7 +74,7 @@ namespace NKHook5
                     Print(LogLevel::WARNING, "StatusDefinitions preload skipped: extension(s) unavailable");
                 }
 
-                auto loadJsonDefinitions = [](const char* phaseLog, const char* folderPrefix, auto* ext)
+                auto loadJsonDefinitions = [](const char* phaseLog, const char* folderPrefix, Extension* ext)
                 {
                     if (!ext)
                         return;
@@ -105,12 +105,12 @@ namespace NKHook5
                 loadJsonDefinitions(
                     "Hijacking lab definitions for dynamic max levelling...",
                     "Assets/JSON/LabDefinitions/",
-                    ExtensionManager::Get<NKHook5::Extensions::LabDefinitions::LabDefinitionsExt>());
+                    ExtensionManager::Get<NKHook5::Extensions::LabDefinitionsExt>());
 
                 loadJsonDefinitions(
                     "Hijacking specialty definitions for dynamic max levelling...",
                     "Assets/JSON/SpecialtyDefinitions/",
-                    ExtensionManager::Get<NKHook5::Extensions::SpecialtyDefinitions::SpecialtyDefinitionsExt>());
+                    ExtensionManager::Get<NKHook5::Extensions::SpecialtyDefinitionsExt>());
 
 
                 Print(LogLevel::INFO, "Custom assets loaded!");
