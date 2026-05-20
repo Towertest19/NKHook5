@@ -80,7 +80,10 @@ namespace NKHook5::Patches::CFlagStringConvertor
 				// Finish extension-side registration in a deterministic order after the
 				// tower factory has consumed the augmented category list.
 				if (auto* towerInfoExt = ExtensionManager::Get<TowerInfoExt>())
+				{
+					Print(LogLevel::INFO, "Hijacking tower info runtime to resolve custom tower unlocks/overviews...");
 					towerInfoExt->FinalizeTowerRegistration(g_towerFlags);
+				}
 				if (auto* labExt = ExtensionManager::Get<LabDefinitionsExt>())
 					labExt->FinalizeTowerRegistration();
 				if (auto* specialtyExt = ExtensionManager::Get<SpecialtyDefinitionsExt>())
@@ -204,4 +207,3 @@ namespace NKHook5::Patches::CFlagStringConvertor
 		}
 	}
 }
-
