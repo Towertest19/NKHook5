@@ -95,7 +95,7 @@ namespace NKHook5
                             continue;
 
                         Print(LogLevel::INFO, "Loading JSON definition from: %s", entry.c_str());
-                        const auto data = zipBase.ReadEntry(entry);
+                        auto data = zipBase.ReadEntry(entry);
                         if (!data.empty())
                             ext->UseData(data.data(), data.size());
                     }
