@@ -29,6 +29,34 @@ namespace NKHook5
             using namespace Extensions::StatusEffect;
 
             static uint64_t o_func;
+            static void LoadDefinitionsFromArchive(const char* phaseLog, const char* folderPrefix, Common::Extensions::JsonExtension* ext)
+            {
+                if (!ext)
+                    return;
+
+                Print(LogLevel::INFO, "%s", phaseLog);
+                Common::Files::ZipBase zipBase;
+                if (!zipBase.Open("./Assets/BTD5.jet"))
+                {
+                    Print(LogLevel::WARNING, "Failed to open BTD5.jet for '%s'", folderPrefix);
+                    return;
+                }
+
+                zipBase.SetPassword("Q%_{6#Px]]");
+                const auto entries = zipBase.GetEntries();
+                for (const auto& entry : entries)
+                {
+                    if (entry.find(folderPrefix) == std::string::npos || entry.find(".json") == std::string::npos)
+                        continue;
+
+                    Print(LogLevel::INFO, "Loading JSON definition from: %s", entry.c_str());
+                    const auto data = zipBase.ReadEntry(entry);
+                    if (!data.empty())
+                        ext->UseData(data.data(), data.size());
+                }
+                zipBase.Close();
+            }
+
             static void __fastcall cb_hook(Classes::CBloonsTD5Game* gameInstance) {
                 Print(LogLevel::INFO, "Loading custom assets...");
                 Print(LogLevel::INFO, "CWD: %s", std::filesystem::current_path().string().c_str());
@@ -50,70 +78,38 @@ namespace NKHook5
                         delete unzipped;
                     }
                 }
-                auto statusDefs = ExtensionManager::Get<StatusDefinitionsExt>();
-                auto statusFlags = ExtensionManager::Get<StatusFlagsExt>();
-                for (const std::string& flag : statusFlags->GetFlags())
+                auto* statusDefs = ExtensionManager::Get<StatusDefinitionsExt>();
+                auto* statusFlags = ExtensionManager::Get<StatusFlagsExt>();
+                if (statusDefs && statusFlags)
                 {
-                    nfw::string effectFile = "Assets/JSON/StatusDefinitions/" + nfw::string(flag) + ".status";
-                    Classes::CUnzippedFile* unzipped = assetsArchive->LoadFrom(effectFile, error);
-                    statusDefs->UseData(unzipped->fileContent, unzipped->fileSize);
-                }
-
-                // Load LabDefinitions JSON files
-                auto labDefs = ExtensionManager::Get<LabDefinitionsExt>();
-                if (labDefs)
-                {
-                    Print(LogLevel::INFO, "Loading LabDefinitions from BTD5.jet...");
-                    // Open the archive with ZipBase to enumerate entries
-                    Common::Files::ZipBase zipBase;
-                    if (zipBase.Open("./Assets/BTD5.jet"))
+                    for (const std::string& flag : statusFlags->GetFlags())
                     {
-                        zipBase.SetPassword("Q%_{6#Px]]");
-                        auto entries = zipBase.GetEntries();
-                        for (const auto& entry : entries)
+                        nfw::string effectFile = "Assets/JSON/StatusDefinitions/" + nfw::string(flag) + ".status";
+                        Classes::CUnzippedFile* unzipped = assetsArchive->LoadFrom(effectFile, error);
+                        if (!unzipped)
                         {
-                            if (entry.find("Assets/JSON/LabDefinitions/") != std::string::npos &&
-                                entry.find(".json") != std::string::npos)
-                            {
-                                Print(LogLevel::INFO, "Loading LabDefinitions from: %s", entry.c_str());
-                                auto data = zipBase.ReadEntry(entry);
-                                if (!data.empty())
-                                {
-                                    labDefs->UseData(data.data(), data.size());
-                                }
-                            }
+                            if (error.length() > 0)
+                                Print(LogLevel::WARNING, "StatusDefinitions load failed for '%s': %s", effectFile.c_str(), error.c_str());
+                            continue;
                         }
-                        zipBase.Close();
+                        statusDefs->UseData(unzipped->fileContent, unzipped->fileSize);
+                        delete unzipped;
                     }
                 }
-
-                // Load SpecialtyDefinitions JSON files
-                auto specDefs = ExtensionManager::Get<SpecialtyDefinitionsExt>();
-                if (specDefs)
+                else
                 {
-                    Print(LogLevel::INFO, "Loading SpecialtyDefinitions from BTD5.jet...");
-                    // Open the archive with ZipBase to enumerate entries
-                    Common::Files::ZipBase zipBase;
-                    if (zipBase.Open("./Assets/BTD5.jet"))
-                    {
-                        zipBase.SetPassword("Q%_{6#Px]]");
-                        auto entries = zipBase.GetEntries();
-                        for (const auto& entry : entries)
-                        {
-                            if (entry.find("Assets/JSON/SpecialtyDefinitions/") != std::string::npos &&
-                                entry.find(".json") != std::string::npos)
-                            {
-                                Print(LogLevel::INFO, "Loading SpecialtyDefinitions from: %s", entry.c_str());
-                                auto data = zipBase.ReadEntry(entry);
-                                if (!data.empty())
-                                {
-                                    specDefs->UseData(data.data(), data.size());
-                                }
-                            }
-                        }
-                        zipBase.Close();
-                    }
+                    Print(LogLevel::WARNING, "StatusDefinitions preload skipped: extension(s) unavailable");
                 }
+
+                LoadDefinitionsFromArchive(
+                    "Hijacking lab definitions for dynamic max levelling...",
+                    "Assets/JSON/LabDefinitions/",
+                    ExtensionManager::Get<LabDefinitionsExt>());
+
+                LoadDefinitionsFromArchive(
+                    "Hijacking specialty definitions for dynamic max levelling...",
+                    "Assets/JSON/SpecialtyDefinitions/",
+                    ExtensionManager::Get<SpecialtyDefinitionsExt>());
 
                 Print(LogLevel::INFO, "Custom assets loaded!");
 
