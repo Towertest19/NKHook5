@@ -27,7 +27,7 @@ namespace NKHook5
 				uint64_t towerId = 0;
 				bool canBeViewedSpecified = false;
 				bool canBeViewed = true;
-				bool hideUpgradeUnlocks = false; // Hide upgrade unlock notifications
+				bool canBeUnlocked = true; // Whether upgrade unlock notifications are allowed
 				std::string customDescription;  // Optional custom description
 			};
 
