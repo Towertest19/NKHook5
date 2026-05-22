@@ -26,6 +26,11 @@ namespace NKHook5 {
 			virtual std::shared_ptr<Asset> ServeGeneric(fs::path assetPath, std::vector<uint8_t> vanilla); //Serves any file
 			virtual std::shared_ptr<Asset> ServeJSON(fs::path assetPath, std::vector<uint8_t> vanilla); //Serves a merged JSON file
 			virtual std::shared_ptr<Asset> ServeXML(fs::path assetPath, std::vector<uint8_t> vanilla); //Serves a reflected XML file
+
+			std::vector<std::string> CollectEntryPaths(const std::string& pathPrefix, const std::string& extensionSuffix) const;
+
+			void InvalidateCachedPath(const fs::path& assetPath);
+			void CacheServedAsset(const fs::path& assetPath, std::shared_ptr<Asset> asset);
 		};
 	}
 }

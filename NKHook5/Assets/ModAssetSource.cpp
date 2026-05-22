@@ -1,10 +1,15 @@
 #include "ModAssetSource.h"
 
+#include "../../Util/AssetPathUtil.h"
+
+#include <cstring>
+
 using namespace Common;
 using namespace Common::Files;
 using namespace Common::Mod;
 using namespace NKHook5;
 using namespace NKHook5::Assets;
+using namespace NKHook5::Util;
 namespace fs = std::filesystem;
 
 ModAssetSource::ModAssetSource(fs::path modPath) : AssetSource(modPath.stem().string())
@@ -22,15 +27,24 @@ const std::shared_ptr<ModArchive>& ModAssetSource::GetModArch()
 
 bool ModAssetSource::Has(fs::path assetPath)
 {
-	return this->modArch->HasEntry(assetPath.string());
+	const std::string primary = NormalizeArchivePath(assetPath.string());
+	if (this->modArch->HasEntry(primary))
+		return true;
+	if (primary.rfind("Assets/JSON/", 0) == 0)
+		return this->modArch->HasEntry(std::string("Mod/JSON/") + primary.substr(strlen("Assets/JSON/")));
+	return false;
 }
 
 std::shared_ptr<Asset> ModAssetSource::Find(fs::path assetPath)
 {
-	const std::vector<uint8_t>& entryData = this->modArch->ReadEntry(assetPath.string());
+	const std::string primary = NormalizeArchivePath(assetPath.string());
+	std::vector<uint8_t> entryData = this->modArch->ReadEntry(primary);
+	if (entryData.empty() && primary.rfind("Assets/JSON/", 0) == 0)
+		entryData = this->modArch->ReadEntry(std::string("Mod/JSON/") + primary.substr(strlen("Assets/JSON/")));
+
 	if (entryData.empty())
 		return nullptr;
-	return std::make_shared<Asset>(assetPath, entryData);
+	return std::make_shared<Asset>(fs::path(primary), entryData);
 }
 
 std::shared_ptr<Asset> ModAssetSource::FindRel(AssetBin bin, fs::path relativePath)

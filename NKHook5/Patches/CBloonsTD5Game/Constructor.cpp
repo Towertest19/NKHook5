@@ -7,6 +7,7 @@
 #include "../../Assets/ModAssetSource.h"
 #include "../../Classes/CBloonsTD5Game.h"
 #include "../../Signatures/Signature.h"
+#include "../RuntimeHooks.h"
 
 #include <filesystem>
 
@@ -25,13 +26,20 @@ namespace NKHook5
             using namespace NKHook5;
             using namespace NKHook5::Assets;
             using namespace NKHook5::Signatures;
+            using namespace NKHook5::Patches::RuntimeHooks;
             namespace fs = std::filesystem;
 
             static uint64_t o_func;
+            static bool g_modsRegistered = false;
+
             static void* __fastcall cb_hook(Classes::CBloonsTD5Game* gameInstance) {
                 Print("Game Instance: %p", gameInstance);
                 g_appPtr = gameInstance;
                 Print("Game load started");
+                if (g_modsRegistered) {
+                    return PLH::FnCast(o_func, &cb_hook)(gameInstance);
+                }
+                g_modsRegistered = true;
                 Print("Loading Mods...");
                 fs::path cwd = fs::current_path();
                 fs::path modsDir = cwd / "Mods";
@@ -42,12 +50,22 @@ namespace NKHook5
                 std::map<LoadOrder, std::vector<ModAssetSource*>> sources;
                 for (const auto& mod : fs::directory_iterator(modsDir))
                 {
-                    // Skip sub-directories (e.g. Mods/Scripts/ placed by modders for
-                    // Lua scripting).  ModAssetSource expects an archive file, so
-                    // passing a directory crashes before any mod is injected.
-                    if (mod.is_directory())
+                    // Mods/Scripts holds loose Lua for NKH (see LUA_PATH in main.cpp),
+                    // not .nkh assets — never register it as ModAssetSource.
+                    const bool isModsScriptsFolder =
+                        mod.is_directory() && mod.path().filename() == "Scripts";
+                    if (isModsScriptsFolder)
                     {
-                        Print("Skipping directory in Mods/: %s", mod.path().filename().string().c_str());
+                        size_t luaCount = 0;
+                        for (const auto& entry : fs::recursive_directory_iterator(
+                            mod.path(), fs::directory_options::skip_permission_denied))
+                        {
+                            if (entry.is_regular_file() && entry.path().extension() == ".lua")
+                                ++luaCount;
+                        }
+                        Print(LogLevel::INFO,
+                            "Mods/Scripts: %zu Lua file(s) available via LUA_PATH (not an .nkh mod)",
+                            luaCount);
                         continue;
                     }
                     try {
@@ -114,6 +132,7 @@ namespace NKHook5
                     }
                 }
                 Print("Mods loaded!");
+                PrimeLabSpecialtyAfterMods();
                 return PLH::FnCast(o_func, &cb_hook)(gameInstance);
             }
 

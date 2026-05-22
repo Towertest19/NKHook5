@@ -32,4 +32,4 @@ copy "Loader\Release\wininet.dll" "Artifacts\Release\wininet.dll" 2>nul
 
 echo.
 echo === Build Complete ===
-timeout 3 > NUL
+ping -n 4 127.0.0.1 >nul

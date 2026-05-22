@@ -2,6 +2,8 @@
 
 #include <Logging/Logger.h>
 
+#include <algorithm>
+
 using namespace Common::Extensions::Textures;
 using namespace Common::Logging::Logger;
 
@@ -26,6 +28,8 @@ void SheetsExtension::UseJsonData(nlohmann::json data) {
 				continue;
 			}
 			std::string sheetName = customSheet.get<std::string>();
+			if (std::find(this->customSpritesheets.begin(), this->customSpritesheets.end(), sheetName) != this->customSpritesheets.end())
+				continue;
 			this->customSpritesheets.push_back(sheetName);
 			Print(LogLevel::INFO, "Registered a custom spritesheet '%s'!", sheetName.c_str());
 		}

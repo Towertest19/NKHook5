@@ -64,6 +64,22 @@ int initialize() {
 #endif
     Print(LogLevel::INFO, "Loading NKHook5...");
 
+    // Always expose Mods/Scripts so NKH-installed mods can run Lua extensions.
+    AppendLuaSearchPath("LUA_PATH_5_3",
+        "Mods/Scripts/?.lua;Mods/Scripts/?/init.lua;Mods/Assets/Scripts/?.lua;Mods/Assets/Scripts/?/init.lua");
+
+    // Run NKHookAutoload.lua when the game creates its Lua VM (if supported).
+    const std::string luaInit = GetEnvVar("LUA_INIT_5_3");
+    const std::string autoload = "@Mods/Scripts/NKHookAutoload.lua";
+    if (luaInit.empty()) {
+        SetEnvironmentVariableA("LUA_INIT_5_3", autoload.c_str());
+        Print(LogLevel::INFO, "Lua env: set LUA_INIT_5_3='%s'", autoload.c_str());
+    } else if (luaInit.find("NKHookAutoload") == std::string::npos) {
+        const std::string merged = autoload + ";" + luaInit;
+        SetEnvironmentVariableA("LUA_INIT_5_3", merged.c_str());
+        Print(LogLevel::INFO, "Lua env: prepended LUA_INIT_5_3 with NKHook autoload");
+    }
+
     wchar_t* cmdLine = GetCommandLineW();
     int argc;
     wchar_t** argv = CommandLineToArgvW(cmdLine, &argc);

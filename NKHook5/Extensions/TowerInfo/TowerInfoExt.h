@@ -2,6 +2,8 @@
 
 #include <Extensions/JsonExtension.h>
 
+#include <nlohmann/json.hpp>
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -37,13 +39,16 @@ namespace NKHook5
 				std::unordered_map<std::string, size_t> nameToIndex;
 				std::unordered_map<uint64_t, size_t> idToIndex;
 				bool loadedAny = false;
+				bool runtimePreloaded = false;
 			public:
 				TowerInfoExt();
 				virtual const std::vector<TowerInfoDefinition>& GetDefinitions() const;
 				virtual const TowerInfoDefinition* GetDefinition(const std::string& towerType) const;
 				virtual const TowerInfoDefinition* GetDefinition(uint64_t towerId) const;
 				virtual void UseJsonData(nlohmann::json content);
+				virtual void PreloadRuntime();
 				virtual void FinalizeTowerRegistration(const Util::FlagManager& towerFlags);
+				bool IsRuntimePreloaded() const { return runtimePreloaded; }
 				virtual bool BindDefinitionId(const std::string& towerType, uint64_t towerId);
 				
 				// Check if tower should be displayed in info panel
@@ -54,6 +59,10 @@ namespace NKHook5
 				
 				// Check if tower should hide upgrade unlock notifications
 				virtual bool ShouldHideUpgradeUnlocks(const std::string& towerType) const;
+
+				static bool AugmentBuildingsJson(nlohmann::json& buildings, const Util::FlagManager& towerFlags);
+				static bool TryAugmentBuildingsBytes(std::vector<uint8_t>& data, const Util::FlagManager& towerFlags);
+				void RefreshBuildingsScreenEntries(const Util::FlagManager& towerFlags);
 			};
 		}
 	}

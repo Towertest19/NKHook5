@@ -4,8 +4,6 @@
 #include "../../Classes/CBloonsTD5Game.h"
 #include "../../Classes/CZipFile.h"
 #include "../../Extensions/StatusEffect/StatusDefinitionsExt.h"
-#include "../../Extensions/LabDefinitions/LabDefinitionsExt.h"
-#include "../../Extensions/SpecialtyDefinitions/SpecialtyDefinitionsExt.h"
 #include "../../Signatures/Signature.h"
 
 #include <Extensions/ExtensionManager.h>
@@ -29,33 +27,6 @@ namespace NKHook5
             using namespace Extensions::StatusEffect;
 
             static uint64_t o_func;
-            static void LoadDefinitionsFromArchive(const char* phaseLog, const char* folderPrefix, Common::Extensions::JsonExtension* ext)
-            {
-                if (!ext)
-                    return;
-
-                Print(LogLevel::INFO, "%s", phaseLog);
-                Common::Files::ZipBase zipBase;
-                if (!zipBase.Open("./Assets/BTD5.jet"))
-                {
-                    Print(LogLevel::WARNING, "Failed to open BTD5.jet for '%s'", folderPrefix);
-                    return;
-                }
-
-                zipBase.SetPassword("Q%_{6#Px]]");
-                const auto entries = zipBase.GetEntries();
-                for (const auto& entry : entries)
-                {
-                    if (entry.find(folderPrefix) == std::string::npos || entry.find(".json") == std::string::npos)
-                        continue;
-
-                    Print(LogLevel::INFO, "Loading JSON definition from: %s", entry.c_str());
-                    const auto data = zipBase.ReadEntry(entry);
-                    if (!data.empty())
-                        ext->UseData(data.data(), data.size());
-                }
-                zipBase.Close();
-            }
 
             static void __fastcall cb_hook(Classes::CBloonsTD5Game* gameInstance) {
                 Print(LogLevel::INFO, "Loading custom assets...");
@@ -101,15 +72,8 @@ namespace NKHook5
                     Print(LogLevel::WARNING, "StatusDefinitions preload skipped: extension(s) unavailable");
                 }
 
-                LoadDefinitionsFromArchive(
-                    "Hijacking lab definitions for dynamic max levelling...",
-                    "Assets/JSON/LabDefinitions/",
-                    ExtensionManager::Get<LabDefinitionsExt>());
-
-                LoadDefinitionsFromArchive(
-                    "Hijacking specialty definitions for dynamic max levelling...",
-                    "Assets/JSON/SpecialtyDefinitions/",
-                    ExtensionManager::Get<SpecialtyDefinitionsExt>());
+                Print(LogLevel::INFO,
+                    "Lab/Specialty definitions load via CZipFile::LoadFrom merged assets (.nkh + jet)");
 
                 Print(LogLevel::INFO, "Custom assets loaded!");
 

@@ -8,6 +8,8 @@
 #include <Logging/Logger.h>
 #include <polyhook2/Detour/x86Detour.hpp>
 
+#include <rttihelper.h>
+
 #include <cstdint>
 #include <cstring>
 
@@ -45,6 +47,24 @@ namespace NKHook5::Patches::TowerInfoScreen
 		return reinterpret_cast<uintptr_t>(wrapperAddress) + kTailJumpOffset + 5 + rel;
 	}
 
+	static void InvokeSetTowerImpl(void* thisptr, uint64_t towerId)
+	{
+		if (o_setTowerImpl == 0 || !Utils::IsAddressExecutable(o_setTowerImpl))
+			return;
+
+		*reinterpret_cast<uint8_t*>(reinterpret_cast<uintptr_t>(thisptr) + kPopulatedFlagOffset) = 1;
+
+		auto impl64 = reinterpret_cast<void(__thiscall*)(void*, uint64_t)>(o_setTowerImpl);
+		impl64(thisptr, towerId);
+
+		// 32-bit builds may pass the 64-bit tower id as two stack dwords.
+		if (*reinterpret_cast<uint8_t*>(reinterpret_cast<uintptr_t>(thisptr) + kPopulatedFlagOffset) == 0)
+		{
+			auto implSplit = reinterpret_cast<void(__thiscall*)(void*, uint32_t, uint32_t)>(o_setTowerImpl);
+			implSplit(thisptr, static_cast<uint32_t>(towerId), static_cast<uint32_t>(towerId >> 32));
+		}
+	}
+
 	static void CallSetTower(void* thisptr, int pad, uint64_t towerId)
 	{
 		auto wrapper = reinterpret_cast<void(__fastcall*)(void*, int, uint64_t)>(o_func);
@@ -52,12 +72,9 @@ namespace NKHook5::Patches::TowerInfoScreen
 		// The tiny wrapper at TowerInfoScreen_SetTower only checks the low 32 bits
 		// before it tail-calls the real implementation. Big tower flags after
 		// GameDummy have a zero low dword, so bypass the wrapper for those IDs.
-		if (towerId != 0 && static_cast<uint32_t>(towerId) == 0 && o_setTowerImpl != 0 &&
-			Utils::IsAddressExecutable(o_setTowerImpl))
+		if (towerId != 0 && static_cast<uint32_t>(towerId) == 0)
 		{
-			*reinterpret_cast<uint8_t*>(reinterpret_cast<uintptr_t>(thisptr) + kPopulatedFlagOffset) = 1;
-			auto impl = reinterpret_cast<void(__thiscall*)(void*, uint64_t)>(o_setTowerImpl);
-			impl(thisptr, towerId);
+			InvokeSetTowerImpl(thisptr, towerId);
 			return;
 		}
 
@@ -76,7 +93,19 @@ namespace NKHook5::Patches::TowerInfoScreen
 			}
 
 			o_setTowerImpl = ResolveSetTowerImpl(address);
-			if (o_setTowerImpl != 0)
+			if (o_setTowerImpl == 0)
+			{
+				const uintptr_t vtable = h_rtti::get_vtable("TowerInfoScreen");
+				if (vtable != 0)
+				{
+					// SetTower is typically the third virtual method on TowerInfoScreen.
+					o_setTowerImpl = *reinterpret_cast<uintptr_t*>(vtable + sizeof(void*) * 2);
+					Print(LogLevel::INFO,
+						"TowerInfoScreen SetTower patch: using RTTI vtable fallback impl at %p",
+						reinterpret_cast<void*>(o_setTowerImpl));
+				}
+			}
+			else
 			{
 				Print(LogLevel::INFO, "TowerInfoScreen SetTower patch: resolved implementation at %p", reinterpret_cast<void*>(o_setTowerImpl));
 			}

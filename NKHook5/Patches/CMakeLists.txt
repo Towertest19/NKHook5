@@ -1,6 +1,7 @@
 target_sources(NKHook5 PRIVATE 
     "PatchManager.cpp"
     "IPatch.cpp"
+    "RuntimeHooks.cpp"
 )
 
 add_subdirectory(CApp)

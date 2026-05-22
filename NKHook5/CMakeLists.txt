@@ -1,5 +1,5 @@
 add_library(NKHook5 SHARED)
-set_target_properties(NKHook5 PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+set_target_properties(NKHook5 PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 target_sources(NKHook5 PRIVATE 
     "main.cpp"

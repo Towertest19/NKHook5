@@ -415,8 +415,11 @@ void Signatures::FindAll() {
 	//   3. Tail-calls the main SetTower implementation.
 	// Signature `55 8B EC 8B 45 08 85 C0 74 10 C6 81 98 01 00 00 01` has exactly
 	// ONE match in the entire .text section, so no vtable fallback is needed.
-	pointerMap[Sigs::TowerInfoScreen_SetTower] = Signatures::FindFirst(1,
-		"55 8B EC 8B 45 08 85 C0 74 10 C6 81 98 01 00 00 01 89 45 08 5D E9"
+	pointerMap[Sigs::TowerInfoScreen_SetTower] = Signatures::FindFirst(4,
+		"55 8B EC 8B 45 08 85 C0 74 10 C6 81 98 01 00 00 01 89 45 08 5D E9",
+		"55 8B EC 8B 45 08 85 C0 74 ?? C6 81 98 01 00 00 01 89 45 08 5D E9",
+		"55 8B EC 8B 45 08 85 C0 74 10 C6 81 98 01 00 00 01",
+		"55 8B EC 8B 45 08 85 C0 74 ?? C6 81 ?? 01 00 00 01"
 	);
 	/* ScriptedScreen */
 	pointerMap[Sigs::ScriptedScreen_VTable] = (void*)h_rtti::get_vtable("ScriptedScreen");

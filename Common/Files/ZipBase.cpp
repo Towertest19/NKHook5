@@ -4,11 +4,22 @@
 
 #include <Util/memstream>
 
+#include <algorithm>
+
 using namespace Common;
 using namespace Common::Files;
 using namespace Common::Logging;
 using namespace Common::Logging::Logger;
 namespace fs = std::filesystem;
+
+namespace
+{
+	std::string NormalizeEntryPath(std::string path)
+	{
+		std::replace(path.begin(), path.end(), '\\', '/');
+		return path;
+	}
+}
 
 ZipBase::ZipBase() : IFile() {
 	this->compressionLevel = 0;
@@ -63,14 +74,15 @@ std::vector<std::string> ZipBase::GetEntries() const
 	std::vector<std::string> result;
 	for (size_t i = 0; i < this->archive->GetEntriesCount(); i++) {
 		auto entry = this->archive->GetEntry(i);
-		result.push_back(entry->GetFullName());
+		result.push_back(NormalizeEntryPath(entry->GetFullName()));
 	}
 	return result;
 }
 
 bool ZipBase::HasEntry(const std::string& entry) const {
-	return std::ranges::any_of(this->GetEntries(), [entry](const auto& e) -> bool {
-		return e == entry;
+	const std::string normalized = NormalizeEntryPath(entry);
+	return std::ranges::any_of(this->GetEntries(), [&normalized](const auto& e) -> bool {
+		return e == normalized;
 	});
 }
 
@@ -81,7 +93,9 @@ std::vector<uint8_t> ZipBase::ReadEntry(const std::string& entry)
 		//printf("Error: pArchive was null in read");
 		return result;
 	}
-	auto pEntry = this->archive->GetEntry(entry);
+	auto pEntry = this->archive->GetEntry(NormalizeEntryPath(entry));
+	if (pEntry == nullptr)
+		pEntry = this->archive->GetEntry(entry);
 	if (pEntry == nullptr) {
 		//printf("Error: pEntry was null in read\n");
 		//printf("Entry: %s\n", entry.c_str());

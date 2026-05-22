@@ -6,9 +6,8 @@
 #include "../../Classes/CTowerFactory.h"
 #include "../../Classes/CWeaponFactory.h"
 #include "../../Extensions/StatusEffect/StatusDefinitionsExt.h"
-#include "../../Extensions/LabDefinitions/LabDefinitionsExt.h"
-#include "../../Extensions/SpecialtyDefinitions/SpecialtyDefinitionsExt.h"
 #include "../../Extensions/TowerInfo/TowerInfoExt.h"
+#include "../RuntimeHooks.h"
 #include "../../Signatures/Signature.h"
 #include "../../Util/FlagManager.h"
 
@@ -41,18 +40,23 @@ namespace NKHook5::Patches::CFlagStringConvertor
 	using namespace NKHook5;
 	using namespace NKHook5::Extensions;
 	using namespace NKHook5::Extensions::StatusEffect;
-	using namespace NKHook5::Extensions::LabDefinitions;
-	using namespace NKHook5::Extensions::SpecialtyDefinitions;
 	using namespace NKHook5::Extensions::TowerInfo;
 	using namespace Signatures;
 
 	static uint64_t o_func;
+	static bool g_towerCategoryHijacked = false;
+
 	void* LoadCategory::cb_hook(int category, nfw::string* stringList, size_t stringCount, int indexMode) {
 		auto* self = reinterpret_cast<Classes::CFlagStringConvertor*>(this);
 
 		//Hijack and load new tower ids
 		if (self == g_towerFactory) {
 			if (category == 0) {
+				if (g_towerCategoryHijacked) {
+					auto ofnEarly = std::bit_cast<decltype(&LoadCategory::cb_hook)>(reinterpret_cast<void*>(o_func));
+					return (this->*ofnEarly)(category, stringList, stringCount, indexMode);
+				}
+				g_towerCategoryHijacked = true;
 				Print(LogLevel::INFO, "Hijacking tower registration to inject new types...");
 				nfw::vector<nfw::string> allTowers;
 				auto* towerFlagExt = (TowerFlagExt*)ExtensionManager::GetByName("TowerFlags");
@@ -80,14 +84,8 @@ namespace NKHook5::Patches::CFlagStringConvertor
 				// Finish extension-side registration in a deterministic order after the
 				// tower factory has consumed the augmented category list.
 				if (auto* towerInfoExt = ExtensionManager::Get<TowerInfoExt>())
-				{
-					Print(LogLevel::INFO, "Hijacking tower info runtime to resolve custom tower unlocks/overviews...");
 					towerInfoExt->FinalizeTowerRegistration(g_towerFlags);
-				}
-				if (auto* labExt = ExtensionManager::Get<LabDefinitionsExt>())
-					labExt->FinalizeTowerRegistration();
-				if (auto* specialtyExt = ExtensionManager::Get<SpecialtyDefinitionsExt>())
-					specialtyExt->FinalizeTowerRegistration();
+				RuntimeHooks::NotifyTowerTypesReady();
 
 				return result;
 			}

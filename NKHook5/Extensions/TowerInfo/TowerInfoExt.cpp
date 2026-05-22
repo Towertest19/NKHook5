@@ -1,15 +1,26 @@
 #include "TowerInfoExt.h"
 
+#include "../../Assets/AssetServer.h"
 #include "../../Util/FlagManager.h"
+#include "../../Util/JetJsonLoader.h"
 
+#include <cstring>
+
+#include <Extensions/ExtensionManager.h>
 #include <Logging/Logger.h>
+
+#include <unordered_set>
 
 using namespace Common;
 using namespace Common::Extensions;
 using namespace Common::Logging::Logger;
 using namespace NKHook5;
+using namespace NKHook5::Assets;
 using namespace NKHook5::Extensions;
 using namespace NKHook5::Extensions::TowerInfo;
+using namespace NKHook5::Util;
+
+namespace fs = std::filesystem;
 
 TowerInfoExt::TowerInfoExt() : JsonExtension("TowerInfo", "*/Assets/JSON/TowerDefinitions/*.tower")
 {
@@ -98,8 +109,61 @@ const TowerInfoDefinition* TowerInfoExt::GetDefinition(uint64_t towerId) const
 	return nullptr;
 }
 
+void TowerInfoExt::PreloadRuntime()
+{
+	if (runtimePreloaded)
+		return;
+
+	Print(LogLevel::INFO, "Hijacking tower info runtime to preload merged .nkh/.jet metadata...");
+	Print(LogLevel::INFO, "Copying vanilla tower info definitions...");
+	PreloadJsonExtension(*this);
+	Print(LogLevel::INFO, "Old tower info definitions copied; mod tower metadata is now available.");
+
+	// Extra pass: collect any TypeNames that arrived via TowerFlags / Lua
+	// after our own PreloadJsonExtension ran.  Flags.json or NKHookAutoload.lua
+	// may register new tower bit-flags _after_ PreloadJsonExtension but before
+	// this runtime hook fires, so idToIndex would still be empty for them.
+	if (AssetServer* server = AssetServer::GetServer())
+	{
+		for (const auto& path : server->CollectEntryPaths("Assets/JSON/TowerDefinitions/", ".tower"))
+		{
+			nlohmann::json merged;
+			if (!ReadMergedJsonEntry(path, merged))
+				continue;
+			if (!merged.is_object() || !merged.contains("TypeName"))
+				continue;
+			const std::string typeName = merged.value("TypeName", "");
+			if (typeName.empty())
+				continue;
+			// Already present – skip.
+			if (nameToIndex.find(typeName) != nameToIndex.end())
+				continue;
+			// Temporarily register so PreloadJsonExtension's idToIndex matches are complete
+			// before FinalizeTowerRegistration walks this list.
+			TowerInfoDefinition def;
+			def.towerType = typeName;
+			def.canBeViewed = merged.value("CanBeViewed", true);
+			def.canBeViewedSpecified = merged.contains("CanBeViewed");
+			def.canBeUnlocked = merged.value("CanBeUnlocked",
+				!merged.value("HideUpgradeUnlocks", true));
+			if (merged.contains("InfoDescription"))
+				def.customDescription = merged.value("InfoDescription", "");
+			nameToIndex[typeName] = definitions.size();
+			definitions.push_back(std::move(def));
+			Print(LogLevel::INFO,
+				"TowerInfo preload: discovered TypeName '%s' in '%s', id deferred to FinalizeTowerRegistration",
+				typeName.c_str(), path.c_str());
+		}
+	}
+	Print(LogLevel::INFO,
+		"TowerInfo: %zu definitions ready after runtime preload", definitions.size());
+
+	runtimePreloaded = true;
+}
+
 void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags)
 {
+	Print(LogLevel::INFO, "Hijacking tower info runtime to resolve custom tower unlocks/overviews...");
 	idToIndex.clear();
 	for (size_t i = 0; i < definitions.size(); ++i)
 	{
@@ -113,6 +177,54 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 		else
 		{
 			Print(LogLevel::WARNING, "TowerInfo: tower '%s' has no registered tower ID yet", def.towerType.c_str());
+		}
+	}
+
+	// Scan the merged asset-server catalogue for any additional .tower TypeNames
+	// that were introduced by .nkh mods after this extension's own PreloadRuntime.
+	// Those TypeNames may not yet have their idToIndex entry because their tower-id
+	// bit flags were only just registered by Flags.json / the Lua extension.
+	if (AssetServer* server = AssetServer::GetServer())
+	{
+		for (const auto& path : server->CollectEntryPaths("Assets/JSON/TowerDefinitions/", ".tower"))
+		{
+			nlohmann::json merged;
+			if (!ReadMergedJsonEntry(path, merged))
+				continue;
+			if (!merged.is_object() || !merged.contains("TypeName"))
+				continue;
+			std::string typeName = merged.value("TypeName", "");
+			if (typeName.empty())
+				continue;
+			// Only bind TypeNames we haven't seen yet.
+			if (nameToIndex.find(typeName) != nameToIndex.end())
+				continue;
+			uint64_t flagId = towerFlags.GetFlag(typeName);
+			if (flagId == 0)
+			{
+				Print(LogLevel::WARNING,
+					"TowerInfo: TypeName '%s' found in '%s' has no tower flag – "
+					"ensure it is listed in Flags.json",
+					typeName.c_str(), path.c_str());
+				continue;
+			}
+			// Clone the vanilla entry and register it as a dynamic tower definition.
+			TowerInfoDefinition def;
+			def.towerType = typeName;
+			def.towerId = flagId;
+			def.canBeViewed = merged.value("CanBeViewed", true);
+			def.canBeViewedSpecified = merged.contains("CanBeViewed");
+			def.canBeUnlocked = merged.value("CanBeUnlocked",
+				!merged.value("HideUpgradeUnlocks", !def.canBeUnlocked));
+			if (merged.contains("InfoDescription"))
+				def.customDescription = merged.value("InfoDescription", "");
+			const size_t idx = definitions.size();
+			nameToIndex[typeName] = idx;
+			idToIndex[flagId] = idx;
+			definitions.push_back(std::move(def));
+			Print(LogLevel::INFO,
+				"TowerInfo: late-bound TypeName '%s' from '%s' → tower ID %llu",
+				typeName.c_str(), path.c_str(), flagId);
 		}
 	}
 }
@@ -188,4 +300,120 @@ bool TowerInfoExt::ShouldHideUpgradeUnlocks(const std::string& towerType) const
 		return !def->canBeUnlocked;
 	}
 	return false; // Default: show upgrade unlocks
+}
+
+bool TowerInfoExt::AugmentBuildingsJson(nlohmann::json& root, const Util::FlagManager& towerFlags)
+{
+	if (!root.contains("Buildings") || !root["Buildings"].is_array())
+		return false;
+
+	TowerInfoExt* towerInfoExt = ExtensionManager::Get<TowerInfoExt>();
+	bool changed = false;
+
+	for (auto& building : root["Buildings"])
+	{
+		if (!building.is_object() || building.value("Screen", "") != "TowerInfoScreen")
+			continue;
+		if (!building.contains("SubItems") || !building["SubItems"].is_array())
+			building["SubItems"] = nlohmann::json::array();
+
+		auto& subItems = building["SubItems"];
+		std::unordered_set<std::string> existing;
+		for (const auto& item : subItems)
+		{
+			if (item.is_object() && item.contains("Tower"))
+				existing.insert(item["Tower"].get<std::string>());
+		}
+
+		for (const auto& [towerId, towerName] : towerFlags.GetAll())
+		{
+			if (towerFlags.IsVanilla(towerId) || towerName.empty() || towerName == "INVALID")
+				continue;
+			if (!Util::FlagManager::IsBitFlag(towerId))
+				continue;
+			if (!existing.insert(towerName).second)
+				continue;
+
+			bool canView = true;
+			if (towerInfoExt)
+				canView = towerInfoExt->ShouldDisplayInInfoPanel(towerName, true);
+
+			if (!canView)
+				continue;
+
+			subItems.push_back({
+				{ "Type", "Present" },
+				{ "Tower", towerName },
+				{ "Position", nlohmann::json::array({ 0, 0 }) },
+				{ "ButtonOffset", nlohmann::json::array({ 0, 0 }) },
+				{ "Radius", 50 }
+			});
+			changed = true;
+			Print(LogLevel::INFO, "TowerInfo: added '%s' to TowerInfoScreen Buildings.json", towerName.c_str());
+		}
+	}
+
+	return changed;
+}
+
+bool TowerInfoExt::TryAugmentBuildingsBytes(std::vector<uint8_t>& data, const Util::FlagManager& towerFlags)
+{
+	if (data.empty() || towerFlags.GetAll().empty())
+		return false;
+
+	try
+	{
+		nlohmann::json buildings = nlohmann::json::parse(
+			std::string(reinterpret_cast<const char*>(data.data()), data.size()),
+			nullptr, true, true);
+		if (!AugmentBuildingsJson(buildings, towerFlags))
+			return false;
+
+		const std::string patched = buildings.dump();
+		data.assign(patched.begin(), patched.end());
+		return true;
+	}
+	catch (const std::exception&)
+	{
+		return false;
+	}
+}
+
+void TowerInfoExt::RefreshBuildingsScreenEntries(const Util::FlagManager& towerFlags)
+{
+	if (towerFlags.GetAll().empty())
+	{
+		Print(LogLevel::WARNING,
+			"TowerInfo: cannot refresh Buildings.json — tower flags not registered yet");
+		return;
+	}
+
+	static constexpr const char* kBuildingPaths[] = {
+		"Assets/JSON/ScreenDefinitions/MainMenu/Buildings.json",
+		"Assets/JSON/ScreenDefinitions/MainMenu/BuildingsNoSocial.json",
+	};
+
+	AssetServer* server = AssetServer::GetServer();
+	if (!server)
+		return;
+
+	for (const char* entryPath : kBuildingPaths)
+	{
+		nlohmann::json merged;
+		if (!ReadMergedJsonEntry(entryPath, merged))
+			continue;
+
+		std::vector<uint8_t> mergedVec;
+		{
+			const std::string serialized = merged.dump();
+			mergedVec.assign(serialized.begin(), serialized.end());
+		}
+		if (!TryAugmentBuildingsBytes(mergedVec, towerFlags))
+			continue;
+
+		server->InvalidateCachedPath(entryPath);
+		server->CacheServedAsset(entryPath, std::make_shared<Asset>(fs::path(entryPath), mergedVec));
+		Print(LogLevel::INFO,
+			"TowerInfo: refreshed merged '%s' with custom tower SubItems", entryPath);
+	}
 }

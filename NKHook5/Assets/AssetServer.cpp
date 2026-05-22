@@ -1,10 +1,15 @@
 #include "AssetServer.h"
+#include "ModAssetSource.h"
 
 #include <Extensions/Generic/MergeIgnoreExtension.h>
 #include <Extensions/ExtensionManager.h>
 #include <Logging/Logger.h>
 #include <Util/Json/MergedDocument.h>
 #include <Util/Xml/ReflectedDocument.h>
+
+#include <algorithm>
+#include <cstring>
+#include <unordered_set>
 
 #include <rapidxml.hpp>
 #include <rapidxml_ext.hpp>
@@ -131,13 +136,18 @@ std::shared_ptr<Asset> AssetServer::ServeJSON(fs::path assetPath, std::vector<ui
 			const std::vector<uint8_t>& findData = find->GetData();
 			std::string findStr(findData.begin(), findData.end());
 			nlohmann::ordered_json findJson = nlohmann::ordered_json::parse(findStr, nullptr, true, true);
-			if (ExtensionManager::GetByTarget(assetPath.string()).empty())
-				merged.Add(findJson);
-			else
-				merged.Add(findJson, MergeMode::INSERTIVE);
+			// Respect each mod document's MERGE_MODE (INSERTIVE/SUBSTITUTIVE); do not
+			// override NKH merge semantics based on which JsonExtension owns the path.
+			merged.Add(findJson);
 		}
 
 		nlohmann::ordered_json mergedJson = merged.GetMerged();
+		if (mergedJson.empty() && !finds.empty())
+		{
+			const std::vector<uint8_t>& modOnly = finds.back()->GetData();
+			return std::make_shared<Asset>(assetPath, modOnly);
+		}
+
 		std::string mergedStr = mergedJson.dump();
 		std::shared_ptr<Asset> mergedAsset = std::make_shared<Asset>(assetPath, std::vector<uint8_t>(mergedStr.begin(), mergedStr.end()));
 		return mergedAsset;
@@ -215,4 +225,55 @@ std::shared_ptr<Asset> AssetServer::ServeXML(fs::path assetPath, std::vector<uin
 		Print(LogLevel::ERR, "An error occoured whilst serving an XML file: %s", ex.what());
 	}
 	return nullptr;
+}
+
+std::vector<std::string> AssetServer::CollectEntryPaths(const std::string& pathPrefix, const std::string& extensionSuffix) const
+{
+	std::vector<std::string> paths;
+	std::unordered_set<std::string> seen;
+
+	auto appendPath = [&](const std::string& rawPath) {
+		std::string path = rawPath;
+		std::replace(path.begin(), path.end(), '\\', '/');
+		if (path.rfind("Mod/JSON/", 0) == 0)
+			path = "Assets/JSON/" + path.substr(strlen("Mod/JSON/"));
+		if (path.rfind(pathPrefix, 0) != 0)
+			return;
+		if (!extensionSuffix.empty() && path.size() >= extensionSuffix.size()) {
+			if (path.compare(path.size() - extensionSuffix.size(), extensionSuffix.size(), extensionSuffix) != 0)
+				return;
+		}
+		if (seen.insert(path).second)
+			paths.push_back(path);
+	};
+
+	for (AssetSource* source : this->sources) {
+		auto* modSource = dynamic_cast<ModAssetSource*>(source);
+		if (!modSource)
+			continue;
+		for (const std::string& entry : modSource->GetModArch()->GetEntries())
+			appendPath(entry);
+	}
+
+	std::sort(paths.begin(), paths.end());
+	return paths;
+}
+
+void AssetServer::InvalidateCachedPath(const fs::path& assetPath)
+{
+	const fs::path normalized = assetPath.generic_string();
+	cache.erase(
+		std::remove_if(cache.begin(), cache.end(),
+			[&](const std::shared_ptr<Asset>& cached) {
+				return cached != nullptr && cached->GetFullPath() == normalized;
+			}),
+		cache.end());
+}
+
+void AssetServer::CacheServedAsset(const fs::path& assetPath, std::shared_ptr<Asset> asset)
+{
+	if (asset == nullptr)
+		return;
+	InvalidateCachedPath(assetPath);
+	cache.push_back(std::move(asset));
 }

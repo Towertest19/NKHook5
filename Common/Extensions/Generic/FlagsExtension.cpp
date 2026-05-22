@@ -2,6 +2,8 @@
 
 #include <Logging/Logger.h>
 
+#include <algorithm>
+
 using namespace Common::Extensions::Generic;
 using namespace Common::Logging::Logger;
 
@@ -29,8 +31,9 @@ void FlagsExtension::UseJsonData(nlohmann::json data) {
 				Print(LogLevel::ERR, "Failed to register a flag because it was not a string!");
 				continue;
 			}
-			//Add the flag string to the registeredFlags list
 			std::string flagStr = customFlag;
+			if (std::find(this->registeredFlags.begin(), this->registeredFlags.end(), flagStr) != this->registeredFlags.end())
+				continue;
 			this->registeredFlags.push_back(flagStr);
 			Print(LogLevel::INFO, "[%s] Registered a custom flag '%s'!", this->GetName().c_str(), flagStr.c_str());
 		}

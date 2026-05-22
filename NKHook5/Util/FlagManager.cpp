@@ -13,6 +13,9 @@ void FlagManager::Register(uint64_t numeric, const std::string& text)
 
 uint64_t FlagManager::Register(const std::string& text)
 {
+	if (const uint64_t existing = GetFlag(text))
+		return existing;
+
 	// Numeric +1 registration - finds next available ID by incrementing
 	// Skips existing bit flag IDs (1, 2, 4, 8, etc.) and already-registered IDs
 	uint64_t id = nextSequentialId;
@@ -28,6 +31,9 @@ uint64_t FlagManager::Register(const std::string& text)
 
 uint64_t FlagManager::RegisterBitFlag(const std::string& text, int startBit)
 {
+	if (const uint64_t existing = GetFlag(text))
+		return existing;
+
 	// Bit flag registration - finds next available bit flag starting from startBit
 	// For bloons: should start from bit 20 (after Dreadbloon at bit 19)
 	// For towers: should start from bit 59 (after GameDummy at bit 58)

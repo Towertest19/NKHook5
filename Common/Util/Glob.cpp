@@ -80,24 +80,42 @@ bool Glob::Match(std::string filePath) const {
 	if (!sanitizedPath.empty())
 		pathParts.push_back(sanitizedPath);
 
-	//If the parts are different sizes, they cant possibly match
-	if (pathParts.size() != globParts.size()) {
-		return false;
-	}
+	// Compare glob vs path using a two-pointer approach.
+	// A leading '*' in the glob can match any remaining leading path parts.
+	// Each subsequent glob part is matched character-by-character against
+	// the corresponding path part (a trailing '*' glob part can absorb the
+	// rest of the path part as a suffix match).
+	size_t g = 0;  // glob index
+	size_t p = 0;  // path index
+	std::string::size_type lastStarPatternPos = std::string::npos;
 
-	//Assume they match before checking
-	bool theyMatch = true;
-
-	//Match each part
-	for (size_t i = 0; i < pathParts.size(); i++) {
-		std::string pathPart = pathParts[i];
-		std::string globPart = globParts[i];
-
-		bool matches = MatchPart(pathPart, globPart);
-		if (!matches) {
-			theyMatch = false;
+	while (p < pathParts.size()) {
+		if (g < globParts.size() &&
+			(globParts[g] == "?" || globParts[g] == pathParts[p])) {
+			++g;
+			++p;
+		}
+		else if (g < globParts.size() && globParts[g] == "*") {
+			lastStarPatternPos = g++;
+		}
+		else if (lastStarPatternPos != std::string::npos) {
+			// Backtrack: try advancing the path offset by one
+			// (the '*' absorbs one more path part). The glob pointer
+			// resets one position past the saved star so that the
+			// next fixed/trailing-wildcard glob part tries again on
+			// the next path part.
+			g = lastStarPatternPos + 1;
+			++p;
+		}
+		else {
+			return false;
 		}
 	}
 
-	return theyMatch;
+	// Consume any trailing glob wildcards
+	while (g < globParts.size() && globParts[g] == "*") {
+		++g;
+	}
+
+	return g == globParts.size();
 }

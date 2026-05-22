@@ -1,4 +1,5 @@
 #include "GetMaxLevel.h"
+#include "LabTypeBinding.h"
 
 #include "../../Extensions/ExtensionManager.h"
 #include "../../Extensions/LabDefinitions/LabDefinitionsExt.h"
@@ -25,83 +26,85 @@ namespace NKHook5::Patches::CLabFactory
 
 	static uint64_t o_func;
 
+	namespace
+	{
+		constexpr int kSpecialtyVanillaCap = 4;
+
+		bool IsMonkeyLabVanillaCap(int vanillaMax)
+		{
+			return (vanillaMax >= 10 && vanillaMax <= 21) || vanillaMax == 13;
+		}
+
+		bool IsSpecialtyVanillaCap(int vanillaMax)
+		{
+			return vanillaMax == kSpecialtyVanillaCap;
+		}
+	}
+
 	GetMaxLevel::GetMaxLevel() : IPatch("CLabFactory::GetMaxLevel") {}
 
 	// CLabFactory::GetMaxLevel hook.
 	//
-	// The game function is __thiscall and takes a single INTEGER lab-type index
-	// (NOT a const char* pointer).  It subtracts 0x25 from the argument and
-	// dispatches through a jump table to return the per-lab constant max level
-	// (values 1–21, with 13 as the vanilla out-of-range default).
-	//
-	// With NKHook5 active the max level is DYNAMIC:
-	//   1. LabDefinitionsExt is queried first so MonkeyLabScreen can extend
-	//      regular lab caps directly from the JSON Upgrades array.
-	//   2. SpecialtyDefinitionsExt is queried next. If a SpecialtyDefinitions
-	//      JSON in Assets/JSON/SpecialtyDefinitions/ declares a matching LabType,
-	//      the level derived from its Roman-numeral Effects keys is returned
-	//      (I=1 … IX=9, "X" drawback excluded). This makes it possible to
-	//      extend any specialty building to up to 9 upgrade tiers.
-	//   3. If no override is registered the original function is called so all
-	//      vanilla lab and specialty buildings continue to work unchanged.
-	//
-	// __fastcall -> __thiscall ABI bridge (x86):
-	//   ECX    -> thisptr   (CLabFactory instance)
-	//   EDX    -> pad       (ignored, required by __fastcall convention)
-	//   [SP+4] -> labType   (integer lab-type index passed by the game)
+	// The game passes an integer lab-type index (labType), not a name pointer.
+	// Flow:
+	//   1. Call vanilla so we know the stock cap for this labType.
+	//   2. Lazy-bind JSON definitions that omitted LabType (common in mods).
+	//   3. Return a typed LabDefinitions / SpecialtyDefinitions override when bound.
+	//   4. Otherwise apply a scoped fallback (labs vs specialties by vanilla cap).
 	int __fastcall cb_hook_getMaxLevel(void* thisptr, int /*pad*/, int labType)
 	{
-		// ── Step 1: check LabDefinitionsExt ──────────────────────────────────
-		// MonkeyLabScreen asks for the same integer lab-type max level as the
-		// factory.  Let LabDefinitions JSON extend that cap from its Upgrades
-		// array before falling through to specialty metadata or vanilla logic.
-		auto* labExt = ExtensionManager::Get<LabDefinitionsExt>();
-		if (labExt)
-		{
-			const int dynMax = labExt->GetMaxLevel(labType);
-			if (dynMax > 0)
-			{
-				Print(LogLevel::INFO,
-					"GetMaxLevel(%d): dynamic override -> %d (LabDefinitionsExt)",
-					labType, dynMax);
-				return dynMax;
-			}
-		}
+		auto ofn = reinterpret_cast<VanillaGetMaxLevelFn>(o_func);
+		const int vanillaMax = ofn(thisptr, labType);
 
-		// ── Step 2: check SpecialtyDefinitionsExt ────────────────────────────
-		// A positive return value means a JSON definition was found whose
-		// Effects map has at least one upgrade tier.  Return it directly.
+		auto* labExt = ExtensionManager::Get<LabDefinitionsExt>();
 		auto* specExt = ExtensionManager::Get<SpecialtyDefinitionsExt>();
+
+		TryBindLabTypes(thisptr, labExt, specExt);
+
+		if (labExt)
+			labExt->RecordLabShopQuery(labType, vanillaMax);
 		if (specExt)
+			specExt->RecordSpecialtyShopQuery(labType, vanillaMax);
+
+		const bool specialtyQuery = IsSpecialtyVanillaCap(vanillaMax);
+		const bool monkeyLabQuery = IsMonkeyLabVanillaCap(vanillaMax);
+
+		// Scope overrides by the vanilla cap the game uses for each screen:
+		// monkey labs (LabShop / LabDefinitions) vs specialties (SpecialtyShop).
+		if (specialtyQuery && specExt)
 		{
 			const int dynMax = specExt->GetMaxLevel(labType);
 			if (dynMax > 0)
 			{
 				Print(LogLevel::INFO,
-					"GetMaxLevel(%d): dynamic override -> %d (SpecialtyDefinitionsExt)",
-					labType, dynMax);
+					"GetMaxLevel(%d): override -> %d (SpecialtyDefinitionsExt, vanilla was %d)",
+					labType, dynMax, vanillaMax);
 				return dynMax;
 			}
 		}
 
-		// ── Step 3: ask vanilla, then let untyped JSON definitions extend it ──
-		// The vanilla function is a safe integer switch with a bounds check,
-		// so it cannot crash on an unrecognised labType. Some mods do not know the
-		// integer labType assigned by the game; in that case we still honour loaded
-		// JSON definitions by extending the vanilla cap to the highest JSON tier.
-		auto ofn = reinterpret_cast<int(__thiscall*)(void*, int)>(o_func);
-		const int vanillaMax = ofn(thisptr, labType);
+		if (monkeyLabQuery && labExt)
+		{
+			const int dynMax = labExt->GetMaxLevel(labType);
+			if (dynMax > 0)
+			{
+				Print(LogLevel::INFO,
+					"GetMaxLevel(%d): override -> %d (LabDefinitionsExt, vanilla was %d)",
+					labType, dynMax, vanillaMax);
+				return dynMax;
+			}
+		}
 
 		int fallbackMax = vanillaMax;
-		if (labExt)
+		if (specialtyQuery && specExt)
 		{
-			const int dynMax = labExt->GetFallbackMaxLevel(vanillaMax);
+			const int dynMax = specExt->GetFallbackMaxLevel(vanillaMax, labType);
 			if (dynMax > fallbackMax)
 				fallbackMax = dynMax;
 		}
-		if (specExt)
+		if (monkeyLabQuery && labExt)
 		{
-			const int dynMax = specExt->GetFallbackMaxLevel(vanillaMax);
+			const int dynMax = labExt->GetFallbackMaxLevel(vanillaMax, labType);
 			if (dynMax > fallbackMax)
 				fallbackMax = dynMax;
 		}
@@ -109,7 +112,7 @@ namespace NKHook5::Patches::CLabFactory
 		if (fallbackMax != vanillaMax)
 		{
 			Print(LogLevel::INFO,
-				"GetMaxLevel(%d): untyped JSON fallback extended vanilla %d -> %d",
+				"GetMaxLevel(%d): scoped fallback extended vanilla %d -> %d",
 				labType, vanillaMax, fallbackMax);
 		}
 		return fallbackMax;
@@ -124,7 +127,6 @@ namespace NKHook5::Patches::CLabFactory
 		{
 			Print(LogLevel::INFO, "GetMaxLevel patch: found at %p, applying hook...", address);
 
-			// Log the first 8 bytes at the target for sanity verification.
 			{
 				MEMORY_BASIC_INFORMATION mbi{};
 				if (VirtualQuery(address, &mbi, sizeof(mbi)) && mbi.State == MEM_COMMIT)
@@ -167,9 +169,10 @@ namespace NKHook5::Patches::CLabFactory
 
 			if (detour->hook())
 			{
+				SetVanillaGetMaxLevel(reinterpret_cast<VanillaGetMaxLevelFn>(o_func));
 				Print(LogLevel::INFO,
 					"GetMaxLevel patch: hooked successfully. "
-					"Dynamic lab/specialty levels active (labs from Upgrades, specialties up to IX = 9 tiers).");
+					"Dynamic lab/specialty levels active with scoped fallbacks.");
 				return true;
 			}
 			else

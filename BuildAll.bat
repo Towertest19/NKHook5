@@ -19,4 +19,4 @@ copy "Loader\Debug\wininet.dll" "Artifacts\Debug\wininet.dll"
 copy "NKHook5\Release\NKHook5.dll" "Artifacts\Release\NKHook5.dll"
 copy "Loader\Release\wininet.dll" "Artifacts\Release\wininet.dll"
 
-timeout 5 > NUL
+ping -n 6 127.0.0.1 >nul

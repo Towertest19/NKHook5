@@ -3,7 +3,9 @@
 #include <Extensions/JsonExtension.h>
 #include <vector>
 #include <string>
+#include <cstddef>
 #include <map>
+#include <unordered_map>
 #include <nlohmann/json.hpp>
 
 namespace NKHook5::Extensions::LabDefinitions
@@ -19,7 +21,7 @@ namespace NKHook5::Extensions::LabDefinitions
                 std::vector<nlohmann::json> upgrades;
                 int maxLevel;
 
-                LabDefinition() : labType(-1), maxLevel(4) {} // Vanilla specialty buildings cap at tier IV (4)
+                LabDefinition() : labType(-1), maxLevel(4) {}
         };
 
         class LabDefinitionsExt : public Common::Extensions::JsonExtension
@@ -29,17 +31,33 @@ namespace NKHook5::Extensions::LabDefinitions
                 std::map<std::string, size_t> nameToIndex;
                 std::map<int, size_t> labTypeToIndex;
 
+                // Order from Assets/JSON/ScreenDefinitions/MainMenu/LabShop.json (BTD5.jet).
+                std::vector<std::string> labShopOrder;
+                std::unordered_map<std::string, int> labTypeByShopType;
+                size_t labShopRecordIndex = 0;
+                bool modLabTypesApplied = false;
+                bool runtimePreloaded = false;
+
+                static bool ShouldSkipJson(const nlohmann::json& content);
+                size_t UpsertDefinition(LabDefinition def);
+
         public:
                 LabDefinitionsExt();
                 
                 void UseJsonData(nlohmann::json content) override;
-                void FinalizeTowerRegistration();
+                void PreloadRuntime();
+                void LoadLabShopOrder();
+                bool IsRuntimePreloaded() const { return runtimePreloaded; }
+                void RecordLabShopQuery(int labType, int vanillaMaxLevel);
+                void ApplyModLabTypeBindings();
                 
                 const std::vector<LabDefinition>& GetDefinitions() const;
                 const LabDefinition* GetDefinition(const std::string& name) const;
                 const LabDefinition* GetDefinition(int labType) const;
                 int GetMaxLevel(const std::string& labName) const;
                 int GetMaxLevel(int labType) const;
-                int GetFallbackMaxLevel(int vanillaMaxLevel) const;
+                int GetFallbackMaxLevel(int vanillaMaxLevel, int labType) const;
+
+                bool AugmentLabShopJson(nlohmann::json& root) const;
         };
 }
