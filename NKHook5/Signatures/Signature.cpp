@@ -413,8 +413,6 @@ void Signatures::FindAll() {
 	//   1. Returns early (ret 8) if the lo32 of the tower ID is 0.
 	//   2. Sets byte [ecx+0x198]=1 (marks the screen as populated).
 	//   3. Tail-calls the main SetTower implementation.
-	// Signature `55 8B EC 8B 45 08 85 C0 74 10 C6 81 98 01 00 00 01` has exactly
-	// ONE match in the entire .text section, so no vtable fallback is needed.
 	pointerMap[Sigs::TowerInfoScreen_SetTower] = Signatures::FindFirst(4,
 		"55 8B EC 8B 45 08 85 C0 74 10 C6 81 98 01 00 00 01 89 45 08 5D E9",
 		"55 8B EC 8B 45 08 85 C0 74 ?? C6 81 98 01 00 00 01 89 45 08 5D E9",

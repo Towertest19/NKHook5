@@ -132,7 +132,6 @@ namespace NKHook5
                     }
                 }
                 Print("Mods loaded!");
-                PrimeLabSpecialtyAfterMods();
                 return PLH::FnCast(o_func, &cb_hook)(gameInstance);
             }
 

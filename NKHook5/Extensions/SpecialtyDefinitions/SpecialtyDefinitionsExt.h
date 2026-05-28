@@ -42,6 +42,7 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 		static int CountTiers(const nlohmann::json& effects);
 		static bool ShouldSkipJson(const nlohmann::json& content);
 		size_t UpsertDefinition(SpecialtyDefinition def);
+		void LoadMergedDefinition(nlohmann::json content);
 
 	public:
 		SpecialtyDefinitionsExt();
