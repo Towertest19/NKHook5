@@ -40,6 +40,7 @@ namespace NKHook5
 				std::unordered_map<uint64_t, size_t> idToIndex;
 				bool loadedAny = false;
 				bool runtimePreloaded = false;
+				size_t firstCustomDefinitionIndex = 0;
 			public:
 				TowerInfoExt();
 				virtual const std::vector<TowerInfoDefinition>& GetDefinitions() const;

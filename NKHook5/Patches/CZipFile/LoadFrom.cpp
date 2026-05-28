@@ -29,6 +29,21 @@ namespace NKHook5::Patches::CZipFile
 	using namespace NKHook5::Patches::RuntimeHooks;
 	using namespace NKHook5::Signatures;
 	using namespace NKHook5::Assets;
+	namespace fs = std::filesystem;
+
+	namespace
+	{
+		void DeleteFileIfExists(const nfw::string& path)
+		{
+			if (path.empty())
+				return;
+			const fs::path tmpPath(std::string(path.c_str(), path.length()));
+			if (tmpPath.extension() != ".tmp")
+				return;
+			std::error_code ec;
+			fs::remove(tmpPath, ec);
+		}
+	}
 
 	uint64_t o_func;
 	Classes::CUnzippedFile* LoadFrom::cb_hook(const nfw::string& assetPath, void* param_2, nfw::string& archivePassword) {
@@ -139,6 +154,7 @@ namespace NKHook5::Patches::CZipFile
 		}
 
 		OnMergedAssetLoaded(assetPathStr);
+		DeleteFileIfExists(assetPath);
 
 		//If there is an asset to serve
 		if (servedAsset != nullptr) {

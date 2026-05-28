@@ -50,9 +50,6 @@ namespace NKHook5::Patches::RuntimeHooks
 		g_towerTypesReady = true;
 		Print(LogLevel::INFO, "RuntimeHooks: tower types ready; priming towerinfo from merged NKH.");
 
-		if (!g_labSpecialtyPrimed)
-			PrimeLabSpecialtyAfterMods();
-
 		if (g_towerInfoPrimed)
 			return;
 		g_towerInfoPrimed = true;
@@ -66,6 +63,7 @@ namespace NKHook5::Patches::RuntimeHooks
 
 	void OnMergedAssetLoaded(const std::string& /*assetPath*/)
 	{
-		// Preload is tied to tower registration, not per-asset zip reads.
+		if (!g_labSpecialtyPrimed)
+			PrimeLabSpecialtyAfterMods();
 	}
 }

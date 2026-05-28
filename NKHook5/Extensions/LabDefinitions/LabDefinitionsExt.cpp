@@ -5,8 +5,8 @@
 
 #include <Logging/Logger.h>
 
-#include <cstring>
 #include <algorithm>
+#include <cstring>
 #include <unordered_set>
 
 using namespace Common;
@@ -139,17 +139,44 @@ void LabDefinitionsExt::UseJsonData(nlohmann::json content)
         }
 }
 
+void LabDefinitionsExt::LoadMergedDefinition(const std::string& entryPath, nlohmann::json content)
+{
+        if (content.is_object() && !content.contains("Name"))
+        {
+                const size_t slash = entryPath.find_last_of('/');
+                std::string stem = slash == std::string::npos ? entryPath : entryPath.substr(slash + 1);
+                const size_t dot = stem.find_last_of('.');
+                if (dot != std::string::npos)
+                        stem = stem.substr(0, dot);
+                if (!stem.empty())
+                        content["Name"] = "LOC_LAB_" + stem;
+        }
+
+        UseJsonData(std::move(content));
+}
+
 void LabDefinitionsExt::PreloadRuntime()
 {
         if (runtimePreloaded)
                 return;
 
-        Print(LogLevel::INFO, "Hijacking lab definitions runtime (post-tower) to preload merged .nkh/.jet data...");
-        Print(LogLevel::INFO, "Copying vanilla lab definitions...");
-        PreloadJsonExtension(*this);
-        Print(LogLevel::INFO, "Old lab definitions copied; injecting mod overrides from merged assets.");
+        Print(LogLevel::INFO, "LabDefinitions: priming runtime state without scanning Assets/JSON/LabDefinitions.");
 
         LoadLabShopOrder();
+
+        if (AssetServer* server = AssetServer::GetServer())
+        {
+                for (const std::string& path : server->CollectEntryPaths("Assets/JSON/LabDefinitions/", ".json"))
+                {
+                        if (path.find("CacheList") != std::string::npos)
+                                continue;
+
+                        nlohmann::json merged;
+                        if (ReadMergedJsonEntry(path, merged))
+                                LoadMergedDefinition(path, std::move(merged));
+                }
+        }
+
         runtimePreloaded = true;
 
         Print(LogLevel::INFO,
@@ -287,22 +314,10 @@ bool LabDefinitionsExt::AugmentLabShopJson(nlohmann::json& root) const
                         existing.insert(item["Type"].get<std::string>());
         }
 
-        AssetServer* server = AssetServer::GetServer();
-        if (!server)
-                return false;
-
         bool changed = false;
-        for (const std::string& path : server->CollectEntryPaths("Assets/JSON/LabDefinitions/", ".json"))
+        for (const LabDefinition& def : definitions)
         {
-                if (path.find("CacheList") != std::string::npos)
-                        continue;
-
-                const size_t slash = path.find_last_of('/');
-                std::string shopType = slash == std::string::npos ? path : path.substr(slash + 1);
-                const size_t dot = shopType.find_last_of('.');
-                if (dot != std::string::npos)
-                        shopType = shopType.substr(0, dot);
-
+                std::string shopType = StripLabLocPrefix(def.name);
                 if (shopType.empty() || existing.contains(shopType))
                         continue;
 

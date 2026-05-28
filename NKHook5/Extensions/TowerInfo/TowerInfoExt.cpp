@@ -117,6 +117,7 @@ void TowerInfoExt::PreloadRuntime()
 	Print(LogLevel::INFO, "Hijacking tower info runtime to preload merged .nkh/.jet metadata...");
 	Print(LogLevel::INFO, "Copying vanilla tower info definitions...");
 	PreloadJsonExtension(*this);
+	firstCustomDefinitionIndex = definitions.size();
 	Print(LogLevel::INFO, "Old tower info definitions copied; mod tower metadata is now available.");
 
 	// Extra pass: collect any TypeNames that arrived via TowerFlags / Lua
@@ -155,6 +156,8 @@ void TowerInfoExt::PreloadRuntime()
 				typeName.c_str(), path.c_str());
 		}
 	}
+
+	firstCustomDefinitionIndex = std::min(firstCustomDefinitionIndex, definitions.size());
 	Print(LogLevel::INFO,
 		"TowerInfo: %zu definitions ready after runtime preload", definitions.size());
 
@@ -164,8 +167,9 @@ void TowerInfoExt::PreloadRuntime()
 void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags)
 {
 	Print(LogLevel::INFO, "Hijacking tower info runtime to resolve custom tower unlocks/overviews...");
+	PreloadRuntime();
 	idToIndex.clear();
-	for (size_t i = 0; i < definitions.size(); ++i)
+	for (size_t i = firstCustomDefinitionIndex; i < definitions.size(); ++i)
 	{
 		auto& def = definitions[i];
 		def.towerId = towerFlags.GetFlag(def.towerType);

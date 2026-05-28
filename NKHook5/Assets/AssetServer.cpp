@@ -72,6 +72,17 @@ std::shared_ptr<Asset> AssetServer::Serve(fs::path assetPath, std::vector<uint8_
 
 	//JSON files are only found in the json bin
 	if (theBin == AssetBin::JSON || assetPath.filename().string().ends_with(".json")) {
+		const std::string normalizedAssetPath = assetPath.generic_string();
+		if (normalizedAssetPath.find("Assets/JSON/LabDefinitions/") != std::string::npos ||
+			normalizedAssetPath.find("Assets/JSON/SpecialtyDefinitions/") != std::string::npos)
+		{
+			auto toCache = this->ServeGeneric(assetPath, vanilla);
+			if (toCache == nullptr && !vanilla.empty())
+				toCache = std::make_shared<Asset>(assetPath, vanilla);
+			this->cache.push_back(toCache);
+			return toCache;
+		}
+
 		auto toCache = this->ServeJSON(assetPath, vanilla);
 		this->cache.push_back(toCache);
 		return toCache;

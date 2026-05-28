@@ -238,17 +238,33 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
         }
 }
 
+void SpecialtyDefinitionsExt::LoadMergedDefinition(nlohmann::json content)
+{
+        UseJsonData(std::move(content));
+}
+
 void SpecialtyDefinitionsExt::PreloadRuntime()
 {
         if (runtimePreloaded)
                 return;
 
-        Print(LogLevel::INFO, "Hijacking specialty definitions runtime (post-tower) to preload merged .nkh/.jet data...");
-        Print(LogLevel::INFO, "Copying vanilla specialty definitions...");
-        PreloadJsonExtension(*this);
-        Print(LogLevel::INFO, "Old specialty definitions copied; injecting mod overrides and Roman tiers V-IX.");
+        Print(LogLevel::INFO, "SpecialtyDefinitions: priming runtime state without scanning Assets/JSON/SpecialtyDefinitions.");
 
         LoadSpecialtyShopOrder();
+
+        if (AssetServer* server = AssetServer::GetServer())
+        {
+                for (const std::string& path : server->CollectEntryPaths("Assets/JSON/SpecialtyDefinitions/", ".json"))
+                {
+                        if (path.find("CacheList") != std::string::npos)
+                                continue;
+
+                        nlohmann::json merged;
+                        if (ReadMergedJsonEntry(path, merged))
+                                LoadMergedDefinition(std::move(merged));
+                }
+        }
+
         runtimePreloaded = true;
 
         Print(LogLevel::INFO,
@@ -424,21 +440,13 @@ bool SpecialtyDefinitionsExt::AugmentSpecialtyShopJson(nlohmann::json& root) con
                 existing.insert(NormalizeShopFile(item["Type"].get<std::string>()));
         }
 
-        AssetServer* server = AssetServer::GetServer();
-        if (!server)
-                return false;
-
         bool changed = false;
-        for (const std::string& path : server->CollectEntryPaths("Assets/JSON/SpecialtyDefinitions/", ".json"))
+        for (const SpecialtyDefinition& def : definitions)
         {
-                if (path.find("CacheList") != std::string::npos)
+                if (def.name.empty() || existing.contains(NormalizeShopFile(def.name)))
                         continue;
 
-                const size_t slash = path.find_last_of('/');
-                std::string shopFile = slash == std::string::npos ? path : path.substr(slash + 1);
-                shopFile = NormalizeShopFile(shopFile);
-                if (existing.contains(shopFile))
-                        continue;
+                std::string shopFile = NormalizeShopFile(def.name);
 
                 root["SpecialtyItems"].push_back({
                         { "Type", shopFile },

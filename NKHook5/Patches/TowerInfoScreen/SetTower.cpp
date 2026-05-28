@@ -98,7 +98,6 @@ namespace NKHook5::Patches::TowerInfoScreen
 				const uintptr_t vtable = h_rtti::get_vtable("TowerInfoScreen");
 				if (vtable != 0)
 				{
-					// SetTower is typically the third virtual method on TowerInfoScreen.
 					o_setTowerImpl = *reinterpret_cast<uintptr_t*>(vtable + sizeof(void*) * 2);
 					Print(LogLevel::INFO,
 						"TowerInfoScreen SetTower patch: using RTTI vtable fallback impl at %p",
