@@ -135,16 +135,12 @@ FetchContent_Declare(
 FetchContent_GetProperties(jsonspirit)
 if(NOT jsonspirit_POPULATED)
     FetchContent_Populate(jsonspirit)
-    add_library(json_spirit STATIC
-        ${jsonspirit_SOURCE_DIR}/json_spirit/json_spirit_reader.cpp
-        ${jsonspirit_SOURCE_DIR}/json_spirit/json_spirit_value.cpp
-        ${jsonspirit_SOURCE_DIR}/json_spirit/json_spirit_writer.cpp
-    )
-    target_include_directories(json_spirit PUBLIC
+    add_library(json_spirit INTERFACE)
+    target_include_directories(json_spirit INTERFACE
         ${jsonspirit_SOURCE_DIR}
         ${jsonspirit_SOURCE_DIR}/json_spirit
     )
-    target_link_libraries(json_spirit PUBLIC Boost::config Boost::smart_ptr Boost::spirit Boost::variant)
+    target_link_libraries(json_spirit INTERFACE Boost::config Boost::smart_ptr Boost::spirit Boost::variant)
 endif()
 
 add_subdirectory(Common)
