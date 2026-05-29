@@ -6,6 +6,7 @@
 #include <Logging/Logger.h>
 
 #include <algorithm>
+#include <cctype>
 #include <unordered_set>
 
 using namespace Common;
@@ -47,6 +48,58 @@ namespace
                         return type;
                 return type + ".json";
         }
+
+        static std::string AssetStem(const std::string& entryPath)
+        {
+                const size_t slash = entryPath.find_last_of("/\\");
+                std::string stem = slash == std::string::npos ? entryPath : entryPath.substr(slash + 1);
+                const size_t dot = stem.find_last_of('.');
+                if (dot != std::string::npos)
+                        stem = stem.substr(0, dot);
+                return stem;
+        }
+
+        static std::string StripJsonExtension(std::string fileName)
+        {
+                if (fileName.ends_with(".json"))
+                        fileName.resize(fileName.size() - 5);
+                return fileName;
+        }
+
+        static std::string DefinitionShopKey(const SpecialtyDefinition& def)
+        {
+                return def.fileName.empty() ? def.name : def.fileName;
+        }
+
+        static std::string Lowercase(std::string value)
+        {
+                std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) {
+                        return static_cast<char>(std::tolower(ch));
+                });
+                return value;
+        }
+
+        static void AddShopAliases(std::unordered_map<std::string, std::string>& aliases,
+                const SpecialtyDefinition& def)
+        {
+                const std::string shopFile = NormalizeShopFile(DefinitionShopKey(def));
+                if (shopFile.empty())
+                        return;
+                aliases[Lowercase(NormalizeShopFile(def.name))] = shopFile;
+                aliases[Lowercase(shopFile)] = shopFile;
+        }
+
+        static int RomanTierValue(const std::string& key)
+        {
+                for (const auto& [tierKey, tierIdx] : kTierOrder)
+                {
+                        if (key == tierKey)
+                                return tierIdx;
+                }
+                if (key == "X")
+                        return 10;
+                return 0;
+        }
 }
 
 SpecialtyDefinitionsExt::SpecialtyDefinitionsExt()
@@ -76,17 +129,25 @@ bool SpecialtyDefinitionsExt::ShouldSkipJson(const nlohmann::json& content)
 size_t SpecialtyDefinitionsExt::UpsertDefinition(SpecialtyDefinition def)
 {
         auto it = nameToIndex.find(def.name);
+        if (it == nameToIndex.end() && !def.fileName.empty())
+                it = nameToIndex.find(def.fileName);
         if (it != nameToIndex.end())
         {
                 const size_t idx = it->second;
                 if (definitions[idx].labType >= 0)
                         def.labType = definitions[idx].labType;
+                if (def.fileName.empty())
+                        def.fileName = definitions[idx].fileName;
+                AddShopAliases(specialtyShopTypeAliases, def);
                 definitions[idx] = std::move(def);
                 return idx;
         }
 
         const size_t idx = definitions.size();
         nameToIndex[def.name] = idx;
+        if (!def.fileName.empty())
+                nameToIndex[def.fileName] = idx;
+        AddShopAliases(specialtyShopTypeAliases, def);
 
         static constexpr const char* kPrefix = "LOC_SPEC_";
         static constexpr size_t kPrefixLen = 9;
@@ -161,12 +222,13 @@ int SpecialtyDefinitionsExt::CountTiers(const nlohmann::json& effects)
                 return 0;
 
         int highest = 0;
-        for (const auto& [key, tierIdx] : kTierOrder)
+        for (const auto& item : effects.items())
         {
-                if (effects.contains(key) && tierIdx > highest)
+                const int tierIdx = RomanTierValue(item.key());
+                if (tierIdx > highest)
                         highest = tierIdx;
         }
-        return highest;
+        return std::min(highest, 9);
 }
 
 void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
@@ -185,6 +247,8 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
         {
                 SpecialtyDefinition def;
                 def.name = content["Name"].get<std::string>();
+                if (content.contains("FileName"))
+                        def.fileName = StripJsonExtension(content["FileName"].get<std::string>());
 
                 if (content.contains("Building"))
                         def.building = content["Building"].get<std::string>();
@@ -238,8 +302,16 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
         }
 }
 
-void SpecialtyDefinitionsExt::LoadMergedDefinition(nlohmann::json content)
+void SpecialtyDefinitionsExt::LoadMergedDefinition(const std::string& entryPath, nlohmann::json content)
 {
+        if (content.is_object())
+        {
+                if (!content.contains("FileName"))
+                        content["FileName"] = AssetStem(entryPath) + ".json";
+                if (!content.contains("MaxLevel") && content.contains("Effects") && content["Effects"].is_object())
+                        content["MaxLevel"] = std::min(CountTiers(content["Effects"]), 9);
+        }
+
         UseJsonData(std::move(content));
 }
 
@@ -261,8 +333,24 @@ void SpecialtyDefinitionsExt::PreloadRuntime()
 
                         nlohmann::json merged;
                         if (ReadMergedJsonEntry(path, merged))
-                                LoadMergedDefinition(std::move(merged));
+                                LoadMergedDefinition(path, std::move(merged));
                 }
+        }
+
+        std::unordered_set<std::string> existingShopTypes;
+        for (std::string& shopType : specialtyShopOrder)
+        {
+                const auto alias = specialtyShopTypeAliases.find(Lowercase(NormalizeShopFile(shopType)));
+                if (alias != specialtyShopTypeAliases.end())
+                        shopType = alias->second;
+                existingShopTypes.insert(Lowercase(NormalizeShopFile(shopType)));
+        }
+        for (const SpecialtyDefinition& def : definitions)
+        {
+                const std::string shopFile = NormalizeShopFile(DefinitionShopKey(def));
+                if (shopFile.empty() || !existingShopTypes.insert(Lowercase(shopFile)).second)
+                        continue;
+                specialtyShopOrder.push_back(shopFile);
         }
 
         runtimePreloaded = true;
@@ -277,6 +365,7 @@ void SpecialtyDefinitionsExt::LoadSpecialtyShopOrder()
         specialtyShopOrder = ReadMergedShopTypes(kSpecialtyShopPath, "SpecialtyItems");
         specialtyRecordIndex = 0;
         buildingToLabType.clear();
+        specialtyShopTypeAliases.clear();
         modSpecialtyTypesApplied = false;
 
         if (!specialtyShopOrder.empty())
@@ -301,6 +390,8 @@ void SpecialtyDefinitionsExt::RecordSpecialtyShopQuery(int labType, int vanillaM
 	std::string building;
 	if (ReadMergedJsonEntry(entryPath, vanillaDef) && vanillaDef.contains("Building"))
 		building = vanillaDef["Building"].get<std::string>();
+
+	buildingToLabType[shopFile] = labType;
 
 	// Fallback: if the vanilla mod file has no 'Building' field (common when
 	// mods do not include SpecialtyShop.json overrides), try reading the
@@ -361,6 +452,8 @@ void SpecialtyDefinitionsExt::ApplyModSpecialtyBindings()
                         continue;
 
                 auto it = buildingToLabType.find(def.building);
+                if (it == buildingToLabType.end())
+                        it = buildingToLabType.find(NormalizeShopFile(DefinitionShopKey(def)));
                 if (it == buildingToLabType.end())
                         continue;
 
@@ -432,27 +525,38 @@ bool SpecialtyDefinitionsExt::AugmentSpecialtyShopJson(nlohmann::json& root) con
         if (!root.contains("SpecialtyItems") || !root["SpecialtyItems"].is_array())
                 root["SpecialtyItems"] = nlohmann::json::array();
 
+        for (auto& item : root["SpecialtyItems"])
+        {
+                if (!item.is_object() || !item.contains("Type"))
+                        continue;
+                const std::string type = item["Type"].get<std::string>();
+                const auto alias = specialtyShopTypeAliases.find(Lowercase(NormalizeShopFile(type)));
+                if (alias != specialtyShopTypeAliases.end())
+                        item["Type"] = alias->second;
+        }
+
         std::unordered_set<std::string> existing;
         for (const auto& item : root["SpecialtyItems"])
         {
                 if (!item.is_object() || !item.contains("Type"))
                         continue;
-                existing.insert(NormalizeShopFile(item["Type"].get<std::string>()));
+                existing.insert(Lowercase(NormalizeShopFile(item["Type"].get<std::string>())));
         }
 
         bool changed = false;
         for (const SpecialtyDefinition& def : definitions)
         {
-                if (def.name.empty() || existing.contains(NormalizeShopFile(def.name)))
+                std::string shopFile = DefinitionShopKey(def);
+                if (shopFile.empty() || existing.contains(Lowercase(NormalizeShopFile(shopFile))))
                         continue;
 
-                std::string shopFile = NormalizeShopFile(def.name);
+                shopFile = NormalizeShopFile(shopFile);
 
                 root["SpecialtyItems"].push_back({
                         { "Type", shopFile },
                         { "Offset", nlohmann::json::array({ 0, -5 }) }
                 });
-                existing.insert(shopFile);
+                existing.insert(Lowercase(shopFile));
                 changed = true;
                 Print(LogLevel::INFO,
                         "SpecialtyDefinitions: added '%s' to SpecialtyShop.json",

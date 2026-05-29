@@ -337,9 +337,11 @@ bool TowerInfoExt::AugmentBuildingsJson(nlohmann::json& root, const Util::FlagMa
 
 		for (const auto& [towerId, towerName] : towerFlags.GetAll())
 		{
-			if (towerFlags.IsVanilla(towerId) || towerName.empty() || towerName == "INVALID")
+			if (towerName.empty() || towerName == "INVALID")
 				continue;
-			if (!Util::FlagManager::IsBitFlag(towerId))
+			if (Util::FlagManager::IsBaseTower(towerId))
+				continue;
+			if (!Util::FlagManager::IsCustomBitFlag(towerId) && !Util::FlagManager::IsCustomFallbackId(towerId))
 				continue;
 			if (!existing.insert(towerName).second)
 				continue;
