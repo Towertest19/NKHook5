@@ -59,5 +59,3 @@ bin\Artifacts\Release\NKHook5.dll
 ```
 
 Create a `Mods` folder next to the game executable if it does not already exist.
-
-These rules are intended for vanilla tower IDs `DartMonkey` through `MonkeySub`, custom bit flags 59-63, and fallback custom IDs when bit-flag slots are exhausted.
