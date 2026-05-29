@@ -22,6 +22,25 @@ using namespace NKHook5::Util;
 
 namespace fs = std::filesystem;
 
+namespace
+{
+	bool ReadTowerInfoToggles(const nlohmann::json& json, TowerInfoDefinition& def)
+	{
+		def.canBeViewed = json.value("CanBeViewed", true);
+		def.canBeViewedSpecified = json.contains("CanBeViewed");
+
+		if (json.contains("CanBeUnlocked"))
+			def.canBeUnlocked = json.value("CanBeUnlocked", true);
+		else if (json.contains("HideUpgradeUnlocks"))
+			def.canBeUnlocked = !json.value("HideUpgradeUnlocks", false);
+
+		if (json.contains("InfoDescription"))
+			def.customDescription = json.value("InfoDescription", "");
+
+		return true;
+	}
+}
+
 TowerInfoExt::TowerInfoExt() : JsonExtension("TowerInfo", "*/Assets/JSON/TowerDefinitions/*.tower")
 {
 }
@@ -46,27 +65,7 @@ void TowerInfoExt::UseJsonData(nlohmann::json content)
 		def.towerType = content["TypeName"].get<std::string>();
 		loadedAny = true;
 
-		// CanBeViewed flag - controls visibility in tower info panel.
-		// Optional. If not specified, custom towers are visible by default so
-		// unlock and level-up screens can be populated for modded IDs.
-		if (content.contains("CanBeViewed"))
-		{
-			def.canBeViewedSpecified = true;
-			def.canBeViewed = content["CanBeViewed"].get<bool>();
-		}
-
-		// New clearer field: CanBeUnlocked (default true).
-		if (content.contains("CanBeUnlocked"))
-			def.canBeUnlocked = content["CanBeUnlocked"].get<bool>();
-		// Backward compatibility with legacy field name.
-		else if (content.contains("HideUpgradeUnlocks"))
-			def.canBeUnlocked = !content["HideUpgradeUnlocks"].get<bool>();
-
-		// Custom description for info panel
-		if (content.contains("InfoDescription"))
-		{
-			def.customDescription = content["InfoDescription"].get<std::string>();
-		}
+		ReadTowerInfoToggles(content, def);
 
 		// Store in map for quick lookup
 		nameToIndex[def.towerType] = definitions.size();
@@ -143,12 +142,7 @@ void TowerInfoExt::PreloadRuntime()
 			// before FinalizeTowerRegistration walks this list.
 			TowerInfoDefinition def;
 			def.towerType = typeName;
-			def.canBeViewed = merged.value("CanBeViewed", true);
-			def.canBeViewedSpecified = merged.contains("CanBeViewed");
-			def.canBeUnlocked = merged.value("CanBeUnlocked",
-				!merged.value("HideUpgradeUnlocks", true));
-			if (merged.contains("InfoDescription"))
-				def.customDescription = merged.value("InfoDescription", "");
+			ReadTowerInfoToggles(merged, def);
 			nameToIndex[typeName] = definitions.size();
 			definitions.push_back(std::move(def));
 			Print(LogLevel::INFO,
@@ -216,12 +210,7 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 			TowerInfoDefinition def;
 			def.towerType = typeName;
 			def.towerId = flagId;
-			def.canBeViewed = merged.value("CanBeViewed", true);
-			def.canBeViewedSpecified = merged.contains("CanBeViewed");
-			def.canBeUnlocked = merged.value("CanBeUnlocked",
-				!merged.value("HideUpgradeUnlocks", !def.canBeUnlocked));
-			if (merged.contains("InfoDescription"))
-				def.customDescription = merged.value("InfoDescription", "");
+			ReadTowerInfoToggles(merged, def);
 			const size_t idx = definitions.size();
 			nameToIndex[typeName] = idx;
 			idToIndex[flagId] = idx;
@@ -260,7 +249,6 @@ bool TowerInfoExt::ShouldDisplayInInfoPanel(const std::string& towerType, bool i
 		return true;
 	}
 
-	// If tower definitions haven't been loaded yet, don't make restrictive decisions.
 	if (!loadedAny)
 	{
 		return true;
@@ -269,19 +257,14 @@ bool TowerInfoExt::ShouldDisplayInInfoPanel(const std::string& towerType, bool i
 	const TowerInfoDefinition* def = GetDefinition(towerType);
 	if (def)
 	{
-		// If the definition explicitly specifies CanBeViewed, respect it.
 		if (def->canBeViewedSpecified)
 		{
 			return def->canBeViewed;
 		}
 
-		// Otherwise: vanilla and custom towers are visible by default.
 		return true;
 	}
 
-	// Unknown custom towers are also visible by default; this keeps the level-up
-	// and unlock flow from silently dropping tower IDs that were registered after
-	// GameDummy or assigned fallback IDs.
 	return true;
 }
 
@@ -298,12 +281,35 @@ bool TowerInfoExt::ShouldDisplayInInfoPanel(uint64_t towerId, const std::string&
 
 bool TowerInfoExt::ShouldHideUpgradeUnlocks(const std::string& towerType) const
 {
+	return !CanUnlockTower(towerType);
+}
+
+bool TowerInfoExt::ShouldHideUpgradeUnlocks(uint64_t towerId, const std::string& towerType) const
+{
+	return !CanUnlockTower(towerId, towerType);
+}
+
+bool TowerInfoExt::CanUnlockTower(const std::string& towerType) const
+{
+	if (towerType.empty() || towerType == "INVALID")
+		return true;
+
+	if (!loadedAny)
+		return true;
+
 	const TowerInfoDefinition* def = GetDefinition(towerType);
 	if (def)
-	{
-		return !def->canBeUnlocked;
-	}
-	return false; // Default: show upgrade unlocks
+		return def->canBeUnlocked;
+
+	return true;
+}
+
+bool TowerInfoExt::CanUnlockTower(uint64_t towerId, const std::string& towerType) const
+{
+	if (const TowerInfoDefinition* def = GetDefinition(towerId))
+		return def->canBeUnlocked;
+
+	return CanUnlockTower(towerType);
 }
 
 bool TowerInfoExt::AugmentBuildingsJson(nlohmann::json& root, const Util::FlagManager& towerFlags)

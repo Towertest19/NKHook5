@@ -8,6 +8,9 @@ namespace NKHook5::Util {
 		uint64_t nextSequentialId; // Per-manager counter for +1 lookup
 	public:
 		static bool IsVanilla(uint64_t id);
+		static bool IsBaseTower(uint64_t id);
+		static bool IsCustomBitFlag(uint64_t id);
+		static bool IsCustomFallbackId(uint64_t id);
 		// Check if ID is a bit flag (proper targeting) vs numeric ID
 		static bool IsBitFlag(uint64_t id) { return (id & (id - 1)) == 0 && id != 0; }
 

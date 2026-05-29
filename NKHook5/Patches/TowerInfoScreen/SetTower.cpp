@@ -139,8 +139,6 @@ namespace NKHook5::Patches::TowerInfoScreen
 		}
 
 		auto* towerInfoExt = ExtensionManager::Get<TowerInfoExt>();
-		// The hook can run before tower categories are injected during preload.
-		// Defer all custom filtering until tower flag registration exists.
 		if (g_towerFlags.GetAll().empty())
 		{
 			CallSetTower(thisptr, pad, towerId);
@@ -150,16 +148,21 @@ namespace NKHook5::Patches::TowerInfoScreen
 		const bool registeredByFlags = !towerName.empty() && towerName != "INVALID";
 		if (towerInfoExt && registeredByFlags)
 		{
-			// TowerInfo definitions can be loaded before tower type hijacking has
-			// assigned the final 64-bit bit flag. Late-bind on first use so the
-			// info-screen hook follows the same name -> id mapping as injection.
 			towerInfoExt->BindDefinitionId(towerName, towerId);
 		}
 		const bool registeredByTowerInfo = towerInfoExt && towerInfoExt->GetDefinition(towerId) != nullptr;
 
 		if (!registeredByFlags && !registeredByTowerInfo)
 		{
-			// Not a custom tower (or flag manager not yet populated) - vanilla path.
+			CallSetTower(thisptr, pad, towerId);
+			return;
+		}
+
+		if (Util::FlagManager::IsBitFlag(towerId)
+			&& !Util::FlagManager::IsBaseTower(towerId)
+			&& !Util::FlagManager::IsCustomBitFlag(towerId)
+			&& !registeredByTowerInfo)
+		{
 			CallSetTower(thisptr, pad, towerId);
 			return;
 		}

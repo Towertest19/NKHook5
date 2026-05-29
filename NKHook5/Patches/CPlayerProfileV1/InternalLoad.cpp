@@ -1,12 +1,15 @@
 #include "InternalLoad.h"
 
 #include "../../Classes/CPlayerProfileV1.h"
+#include "../../Extensions/ExtensionManager.h"
+#include "../../Extensions/TowerInfo/TowerInfoExt.h"
 #include "../../Mod/SaveData.h"
 #include "../../Signatures/Signature.h"
 #include "../../Util/FlagManager.h"
 
 #include <Logging/Logger.h>
 
+#include <cstdint>
 #include <unordered_set>
 
 extern NKHook5::Util::FlagManager g_towerFlags;
@@ -20,6 +23,8 @@ namespace NKHook5
             using namespace Mod;
             using namespace Signatures;
             using namespace Common;
+            using namespace Common::Extensions;
+            using namespace Extensions::TowerInfo;
             using namespace Common::Logging;
             using namespace Common::Logging::Logger;
 
@@ -32,8 +37,11 @@ namespace NKHook5
                 Print("Adding all towers to save...");
                 const auto& allTowerFlags = g_towerFlags.GetAll();
                 std::unordered_set<std::string> unlockedNames;
+                auto* towerInfoExt = ExtensionManager::Get<TowerInfoExt>();
                 for (const auto& [flag, str] : allTowerFlags) {
-                    if (g_towerFlags.IsVanilla(flag) || str.empty() || str == "INVALID")
+                    if (str.empty() || str == "INVALID")
+                        continue;
+                    if (flag < (1ull << 59) && !Util::FlagManager::IsCustomFallbackId(flag))
                         continue;
                     if (!unlockedNames.insert(str).second)
                         continue;
@@ -41,6 +49,15 @@ namespace NKHook5
                         const uint64_t canonical = g_towerFlags.GetFlag(str);
                         if (canonical != 0 && Util::FlagManager::IsBitFlag(canonical))
                             continue;
+                    }
+                    if (towerInfoExt) {
+                        towerInfoExt->BindDefinitionId(str, flag);
+                        if (!towerInfoExt->CanUnlockTower(flag, str)) {
+                            profile->towerUnlocks[flag] = false;
+                            profile->unlockedLevel4[flag] = false;
+                            Print("Tower '%s' with ID '%llx' left locked by TowerInfo CanBeUnlocked=false", str.c_str(), flag);
+                            continue;
+                        }
                     }
                     profile->towerUnlocks[flag] = true;
                     Print("Added tower '%s' with ID '%llx' to save", str.c_str(), flag);
