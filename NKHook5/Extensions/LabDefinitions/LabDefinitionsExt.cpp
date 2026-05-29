@@ -12,7 +12,6 @@ using namespace Common;
 using namespace Common::Extensions;
 using namespace Common::Logging::Logger;
 using namespace NKHook5;
-using namespace NKHook5::Assets;
 using namespace NKHook5::Extensions;
 using namespace NKHook5::Extensions::LabDefinitions;
 using namespace NKHook5::Util;
