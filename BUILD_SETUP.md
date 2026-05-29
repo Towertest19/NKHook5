@@ -60,12 +60,4 @@ bin\Artifacts\Release\NKHook5.dll
 
 Create a `Mods` folder next to the game executable if it does not already exist.
 
-## TowerInfo behavior to test
-
-- `CanBeViewed: true` or omitted: tower is eligible for TowerInfoScreen registration.
-- `CanBeViewed: false`: tower is hidden from TowerInfoScreen registration.
-- `CanBeUnlocked: true` or omitted: custom tower is inserted into the profile unlock maps so EXP/rank unlock flows can use it.
-- `CanBeUnlocked: false`: custom tower is left locked and unlock popups are hidden.
-- `HideUpgradeUnlocks: true` is kept as a legacy inverse of `CanBeUnlocked: false`.
-
 These rules are intended for vanilla tower IDs `DartMonkey` through `MonkeySub`, custom bit flags 59-63, and fallback custom IDs when bit-flag slots are exhausted.
