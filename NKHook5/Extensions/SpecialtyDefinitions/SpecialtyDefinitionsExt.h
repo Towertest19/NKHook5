@@ -41,10 +41,9 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 		bool modSpecialtyTypesApplied = false;
 		bool runtimePreloaded = false;
 
-		static int CountTiers(const nlohmann::json& effects);
+		static int CountTiers(const nlohmann::json& effects, bool clampToRuntimeMax = true);
 		static bool ShouldSkipJson(const nlohmann::json& content);
 		size_t UpsertDefinition(SpecialtyDefinition def);
-		void LoadMergedDefinition(const std::string& entryPath, nlohmann::json content);
 
 	public:
 		SpecialtyDefinitionsExt();
@@ -54,8 +53,6 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 		void LoadSpecialtyShopOrder();
 		bool IsRuntimePreloaded() const { return runtimePreloaded; }
 
-		static void EnsureExtendedRomanTiers(nlohmann::json& content);
-		static bool PatchMergedAssetBytes(std::vector<uint8_t>& data);
 		void RecordSpecialtyShopQuery(int labType, int vanillaMaxLevel);
 		void ApplyModSpecialtyBindings();
 

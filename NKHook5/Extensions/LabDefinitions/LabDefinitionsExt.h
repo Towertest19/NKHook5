@@ -40,7 +40,6 @@ namespace NKHook5::Extensions::LabDefinitions
 
                 static bool ShouldSkipJson(const nlohmann::json& content);
                 size_t UpsertDefinition(LabDefinition def);
-                void LoadMergedDefinition(const std::string& entryPath, nlohmann::json content);
 
         public:
                 LabDefinitionsExt();

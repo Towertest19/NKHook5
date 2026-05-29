@@ -24,6 +24,7 @@ namespace
 ZipBase::ZipBase() : IFile() {
 	this->compressionLevel = 0;
 	this->closed = true;
+	this->dirty = false;
 }
 
 ZipBase::ZipBase(fs::path path, std::string password) : IFile(path, 0)
@@ -31,6 +32,7 @@ ZipBase::ZipBase(fs::path path, std::string password) : IFile(path, 0)
 	this->closed = true;
 	this->compressionLevel = 0;
 	this->password = password;
+	this->dirty = false;
 	this->Open(path);
 }
 
@@ -42,6 +44,7 @@ ZipBase::~ZipBase()
 bool ZipBase::Open(std::filesystem::path path)
 {
 	this->closed = false;
+	this->dirty = false;
 	IFile::Open(path);
 	this->archive = ZipFile::Open(path.string());
 	this->compressionLevel = 0;
@@ -49,9 +52,13 @@ bool ZipBase::Open(std::filesystem::path path)
 }
 
 void ZipBase::Close() {
-	if(!this->closed)
-		ZipFile::SaveAndClose(this->archive, this->GetPath().string());
+	if (!this->closed) {
+		if (this->dirty)
+			ZipFile::SaveAndClose(this->archive, this->GetPath().string());
+		this->archive.reset();
+	}
 	this->closed = true;
+	this->dirty = false;
 }
 
 size_t ZipBase::GetSize() const
@@ -67,6 +74,11 @@ void ZipBase::SetPassword(const std::string& password)
 void ZipBase::SetCompressionLevel(size_t level)
 {
 	this->compressionLevel = level;
+}
+
+void ZipBase::MarkDirty()
+{
+	this->dirty = true;
 }
 
 std::vector<std::string> ZipBase::GetEntries() const
@@ -167,6 +179,7 @@ bool ZipBase::WriteEntry(std::string entry, std::vector<uint8_t> data)
 		pEntry->UseDataDescriptor();
 	}
 	pEntry->SetCompressionStream(writeStream, method, ZipArchiveEntry::CompressionMode::Immediate);
+	this->dirty = true;
 
 	return true;
 }
