@@ -16,7 +16,7 @@
 namespace h_rtti
 {
 	using byte = unsigned char;
-	std::string bytes_to_ida_pattern(const byte* bytes, size_t size)
+	inline std::string bytes_to_ida_pattern(const byte* bytes, size_t size)
 	{
 		std::stringstream ida_pattern;
 		ida_pattern << std::hex << std::setfill('0');
@@ -35,7 +35,7 @@ namespace h_rtti
 		return ida_pattern.str();
 	}
 
-	std::vector<uintptr_t> get_xrefs_to(uintptr_t address, uintptr_t start, uintptr_t size)
+	inline std::vector<uintptr_t> get_xrefs_to(uintptr_t address, uintptr_t start, uintptr_t size)
 	{
 		std::vector<uintptr_t> xrefs = {};
 
@@ -67,7 +67,7 @@ namespace h_rtti
 		uintptr_t size;
 	};
 
-	std::vector<section_info> get_rtti_sections(uintptr_t base_address)
+	inline std::vector<section_info> get_rtti_sections(uintptr_t base_address)
 	{
 		std::vector<section_info> sections = {};
 
@@ -103,7 +103,7 @@ namespace h_rtti
 		return sections;
 	}
 
-	uintptr_t find_pattern_in_rtti_sections(uintptr_t base_address, const std::string& ida_pattern)
+	inline uintptr_t find_pattern_in_rtti_sections(uintptr_t base_address, const std::string& ida_pattern)
 	{
 		for (const auto& section : get_rtti_sections(base_address))
 		{
@@ -115,7 +115,7 @@ namespace h_rtti
 		return 0;
 	}
 
-	bool get_section_info(uintptr_t base_address, const std::string& section_name, uintptr_t& section_start, uintptr_t& section_size)
+	inline bool get_section_info(uintptr_t base_address, const std::string& section_name, uintptr_t& section_start, uintptr_t& section_size)
 	{
 		const auto dos_header = (PIMAGE_DOS_HEADER)base_address;
 		if (dos_header->e_magic != IMAGE_DOS_SIGNATURE)
@@ -144,7 +144,7 @@ namespace h_rtti
 		return false;
 	}
 
-	size_t get_vtable_from_descriptor(const std::string& type_descriptor_name)
+	inline size_t get_vtable_from_descriptor(const std::string& type_descriptor_name)
 	{
 		auto base_address = (uintptr_t)GetModuleHandleA(NULL);
 		if (!base_address)
@@ -213,7 +213,7 @@ namespace h_rtti
 		return 0;
 	}
 
-	size_t get_vtable(const std::string& table_name)
+	inline size_t get_vtable(const std::string& table_name)
 	{
 		// Type descriptor names look like this: .?AVC_CSPlayer@@ (so: ".?AV" + table_name + "@@")
 		auto result = get_vtable_from_descriptor(".?AV" + table_name + "@@");
@@ -223,7 +223,7 @@ namespace h_rtti
 		return get_vtable_from_descriptor(".?AU" + table_name + "@@");
 	}
 	template<typename type_t>
-	size_t get_vtable()
+	inline size_t get_vtable()
 	{
 		return get_vtable_from_descriptor(typeid(type_t).raw_name());
 	}
