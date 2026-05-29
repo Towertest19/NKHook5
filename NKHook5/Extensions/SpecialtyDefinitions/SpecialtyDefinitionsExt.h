@@ -18,6 +18,7 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 	struct SpecialtyDefinition
 	{
 		std::string name;
+		std::string fileName;
 		std::string building;
 		int labType;
 		int maxLevel;
@@ -34,6 +35,7 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 		std::unordered_map<int, size_t>         labTypeToIndex;
 
 		std::vector<std::string> specialtyShopOrder;
+		std::unordered_map<std::string, std::string> specialtyShopTypeAliases;
 		std::unordered_map<std::string, int> buildingToLabType;
 		size_t specialtyRecordIndex = 0;
 		bool modSpecialtyTypesApplied = false;
@@ -42,7 +44,7 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 		static int CountTiers(const nlohmann::json& effects);
 		static bool ShouldSkipJson(const nlohmann::json& content);
 		size_t UpsertDefinition(SpecialtyDefinition def);
-		void LoadMergedDefinition(nlohmann::json content);
+		void LoadMergedDefinition(const std::string& entryPath, nlohmann::json content);
 
 	public:
 		SpecialtyDefinitionsExt();

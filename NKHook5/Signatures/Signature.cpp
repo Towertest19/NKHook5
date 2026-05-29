@@ -22,6 +22,18 @@ using namespace Common::Logging::Logger;
 
 static std::map<Sigs, void*> pointerMap;
 
+static bool IsOptionalMissingSignature(Sigs sig)
+{
+	switch (sig)
+	{
+	case Sigs::MonkeyLabScreen_CCTOR:
+	case Sigs::SpecialtiesScreen_CCTOR:
+		return true;
+	default:
+		return false;
+	}
+}
+
 void* Signatures::FindFirst(int count, ...) {
 	va_list args;
 	va_start(args, count);
@@ -198,7 +210,7 @@ void Signatures::FindAll() {
 	// CLabFactory::GetMaxLevel(__thiscall) - takes an integer lab-type index (NOT a
 	// string pointer). Subtracts 0x25 from the argument, bounds-checks against 0xFA,
 	// then dispatches through a jump table to return the per-lab constant max level.
-	// Binary-verified unique match at VA=0x91B3E0 (BTD5 v4.7 Steam/Kong).
+	// Binary-verified unique match at VA=0x91A7E0 (BTD5 v4.7 Steam/Kong).
 	pointerMap[Sigs::CLabFactory_GetMaxLevel] = Signatures::FindFirst(1,
 		"55 8B EC 8B 45 08 83 C0 DB 3D FA 00 00 00 0F 87"
 	);
@@ -408,7 +420,7 @@ void Signatures::FindAll() {
 	pointerMap[Sigs::MonkeyLabScreen_CCTOR] = nullptr;
 	pointerMap[Sigs::SpecialtiesScreen_CCTOR] = nullptr;
 	/* TowerInfoScreen */
-	// TowerInfoScreen::SetTower - binary-verified unique pattern at VA=0x82C1D0
+	// TowerInfoScreen::SetTower - binary-verified unique pattern at VA=0x82B5D0
 	// (BTD5 v4.7 Steam/Kong). The function is a small __thiscall wrapper that:
 	//   1. Returns early (ret 8) if the lo32 of the tower ID is 0.
 	//   2. Sets byte [ecx+0x198]=1 (marks the screen as populated).
@@ -452,7 +464,7 @@ void Signatures::FindAll() {
 	);
 
 	magic_enum::enum_for_each<Sigs>([](auto val){
-		if (!GetAddressOf(val)) {
+		if (!GetAddressOf(val) && !IsOptionalMissingSignature(val)) {
 			std::string_view enumName = magic_enum::enum_name<Sigs>(val);
 			Print(LogLevel::ERR, "Failed to find sig '%s'", enumName.data());
 		}
