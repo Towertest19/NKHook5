@@ -6,6 +6,7 @@
 #include <Logging/Logger.h>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <unordered_set>
 
@@ -47,16 +48,6 @@ namespace
                 if (type.ends_with(".json"))
                         return type;
                 return type + ".json";
-        }
-
-        static std::string AssetStem(const std::string& entryPath)
-        {
-                const size_t slash = entryPath.find_last_of("/\\");
-                std::string stem = slash == std::string::npos ? entryPath : entryPath.substr(slash + 1);
-                const size_t dot = stem.find_last_of('.');
-                if (dot != std::string::npos)
-                        stem = stem.substr(0, dot);
-                return stem;
         }
 
         static std::string StripJsonExtension(std::string fileName)
@@ -161,62 +152,7 @@ size_t SpecialtyDefinitionsExt::UpsertDefinition(SpecialtyDefinition def)
         return idx;
 }
 
-void SpecialtyDefinitionsExt::EnsureExtendedRomanTiers(nlohmann::json& content)
-{
-        if (!content.is_object() || !content.contains("Effects") || !content["Effects"].is_object())
-                return;
-
-        int maxLevel = content.value("MaxLevel", kVanillaMaxLevel);
-        maxLevel = std::max(maxLevel, CountTiers(content["Effects"]));
-        if (content.contains("MaxLevel"))
-                maxLevel = std::max(maxLevel, content.value("MaxLevel", kVanillaMaxLevel));
-
-        if (maxLevel <= kVanillaMaxLevel)
-                return;
-
-        auto& effects = content["Effects"];
-        nlohmann::json templateTier;
-        if (effects.contains("IV"))
-                templateTier = effects["IV"];
-        else if (effects.contains("III"))
-                templateTier = effects["III"];
-
-        for (const auto& [key, tierIdx] : kTierOrder)
-        {
-                if (tierIdx <= kVanillaMaxLevel || tierIdx > maxLevel)
-                        continue;
-                if (effects.contains(key))
-                        continue;
-
-                effects[key] = templateTier.is_null() ? nlohmann::json::object() : templateTier;
-                Print(LogLevel::INFO,
-                        "SpecialtyDefinitions: injected extended Effects tier '%s' (maxLevel %d)",
-                        key, maxLevel);
-        }
-}
-
-bool SpecialtyDefinitionsExt::PatchMergedAssetBytes(std::vector<uint8_t>& data)
-{
-        if (data.empty())
-                return false;
-
-        try
-        {
-                nlohmann::json content = nlohmann::json::parse(
-                        std::string(reinterpret_cast<const char*>(data.data()), data.size()),
-                        nullptr, true, true);
-                EnsureExtendedRomanTiers(content);
-                const std::string patched = content.dump();
-                data.assign(patched.begin(), patched.end());
-                return true;
-        }
-        catch (const std::exception&)
-        {
-                return false;
-        }
-}
-
-int SpecialtyDefinitionsExt::CountTiers(const nlohmann::json& effects)
+int SpecialtyDefinitionsExt::CountTiers(const nlohmann::json& effects, bool clampToRuntimeMax)
 {
         if (!effects.is_object())
                 return 0;
@@ -228,7 +164,9 @@ int SpecialtyDefinitionsExt::CountTiers(const nlohmann::json& effects)
                 if (tierIdx > highest)
                         highest = tierIdx;
         }
-        return std::min(highest, 9);
+        if (clampToRuntimeMax)
+                return std::min(highest, 9);
+        return highest;
 }
 
 void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
@@ -255,8 +193,6 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
 
                 def.labType = content.value("LabType", -1);
 
-                EnsureExtendedRomanTiers(content);
-
                 if (content.contains("Effects") && content["Effects"].is_object())
                 {
                         const auto& effects = content["Effects"];
@@ -275,9 +211,6 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
                 {
                         def.maxLevel = content.value("MaxLevel", kVanillaMaxLevel);
                 }
-
-                if (content.contains("MaxLevel"))
-                        def.maxLevel = std::max(def.maxLevel, content.value("MaxLevel", kVanillaMaxLevel));
 
                 const size_t idx = UpsertDefinition(std::move(def));
 
@@ -302,19 +235,6 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
         }
 }
 
-void SpecialtyDefinitionsExt::LoadMergedDefinition(const std::string& entryPath, nlohmann::json content)
-{
-        if (content.is_object())
-        {
-                if (!content.contains("FileName"))
-                        content["FileName"] = AssetStem(entryPath) + ".json";
-                if (!content.contains("MaxLevel") && content.contains("Effects") && content["Effects"].is_object())
-                        content["MaxLevel"] = std::min(CountTiers(content["Effects"]), 9);
-        }
-
-        UseJsonData(std::move(content));
-}
-
 void SpecialtyDefinitionsExt::PreloadRuntime()
 {
         if (runtimePreloaded)
@@ -323,19 +243,6 @@ void SpecialtyDefinitionsExt::PreloadRuntime()
         Print(LogLevel::INFO, "SpecialtyDefinitions: priming runtime state without scanning Assets/JSON/SpecialtyDefinitions.");
 
         LoadSpecialtyShopOrder();
-
-        if (AssetServer* server = AssetServer::GetServer())
-        {
-                for (const std::string& path : server->CollectEntryPaths("Assets/JSON/SpecialtyDefinitions/", ".json"))
-                {
-                        if (path.find("CacheList") != std::string::npos)
-                                continue;
-
-                        nlohmann::json merged;
-                        if (ReadMergedJsonEntry(path, merged))
-                                LoadMergedDefinition(path, std::move(merged));
-                }
-        }
 
         std::unordered_set<std::string> existingShopTypes;
         for (std::string& shopType : specialtyShopOrder)

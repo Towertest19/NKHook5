@@ -5,6 +5,7 @@
 #include "../../Util/JetJsonLoader.h"
 
 #include <cstring>
+#include <iterator>
 
 #include <Extensions/ExtensionManager.h>
 #include <Logging/Logger.h>
@@ -117,39 +118,7 @@ void TowerInfoExt::PreloadRuntime()
 	Print(LogLevel::INFO, "Copying vanilla tower info definitions...");
 	PreloadJsonExtension(*this);
 	firstCustomDefinitionIndex = definitions.size();
-	Print(LogLevel::INFO, "Old tower info definitions copied; mod tower metadata is now available.");
-
-	// Extra pass: collect any TypeNames that arrived via TowerFlags / Lua
-	// after our own PreloadJsonExtension ran.  Flags.json or NKHookAutoload.lua
-	// may register new tower bit-flags _after_ PreloadJsonExtension but before
-	// this runtime hook fires, so idToIndex would still be empty for them.
-	if (AssetServer* server = AssetServer::GetServer())
-	{
-		for (const auto& path : server->CollectEntryPaths("Assets/JSON/TowerDefinitions/", ".tower"))
-		{
-			nlohmann::json merged;
-			if (!ReadMergedJsonEntry(path, merged))
-				continue;
-			if (!merged.is_object() || !merged.contains("TypeName"))
-				continue;
-			const std::string typeName = merged.value("TypeName", "");
-			if (typeName.empty())
-				continue;
-			// Already present – skip.
-			if (nameToIndex.find(typeName) != nameToIndex.end())
-				continue;
-			// Temporarily register so PreloadJsonExtension's idToIndex matches are complete
-			// before FinalizeTowerRegistration walks this list.
-			TowerInfoDefinition def;
-			def.towerType = typeName;
-			ReadTowerInfoToggles(merged, def);
-			nameToIndex[typeName] = definitions.size();
-			definitions.push_back(std::move(def));
-			Print(LogLevel::INFO,
-				"TowerInfo preload: discovered TypeName '%s' in '%s', id deferred to FinalizeTowerRegistration",
-				typeName.c_str(), path.c_str());
-		}
-	}
+	Print(LogLevel::INFO, "Old tower info definitions copied; mod tower metadata will bind from tower flags.");
 
 	firstCustomDefinitionIndex = std::min(firstCustomDefinitionIndex, definitions.size());
 	Print(LogLevel::INFO,
@@ -178,10 +147,35 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 		}
 	}
 
-	// Scan the merged asset-server catalogue for any additional .tower TypeNames
-	// that were introduced by .nkh mods after this extension's own PreloadRuntime.
-	// Those TypeNames may not yet have their idToIndex entry because their tower-id
-	// bit flags were only just registered by Flags.json / the Lua extension.
+	for (const auto& [towerId, towerName] : towerFlags.GetAll())
+	{
+		if (towerName.empty() || towerName == "INVALID")
+			continue;
+		if (Util::FlagManager::IsBaseTower(towerId))
+			continue;
+		if (!Util::FlagManager::IsCustomBitFlag(towerId) && !Util::FlagManager::IsCustomFallbackId(towerId))
+			continue;
+		if (idToIndex.find(towerId) != idToIndex.end())
+			continue;
+
+		auto existing = nameToIndex.find(towerName);
+		if (existing != nameToIndex.end())
+		{
+			definitions[existing->second].towerId = towerId;
+			idToIndex[towerId] = existing->second;
+			continue;
+		}
+
+		TowerInfoDefinition def;
+		def.towerType = towerName;
+		def.towerId = towerId;
+		const size_t idx = definitions.size();
+		nameToIndex[towerName] = idx;
+		idToIndex[towerId] = idx;
+		definitions.push_back(std::move(def));
+		Print(LogLevel::INFO, "TowerInfo: registered tower flag '%s' as tower ID %llu", towerName.c_str(), towerId);
+	}
+
 	if (AssetServer* server = AssetServer::GetServer())
 	{
 		for (const auto& path : server->CollectEntryPaths("Assets/JSON/TowerDefinitions/", ".tower"))
@@ -194,19 +188,17 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 			std::string typeName = merged.value("TypeName", "");
 			if (typeName.empty())
 				continue;
-			// Only bind TypeNames we haven't seen yet.
 			if (nameToIndex.find(typeName) != nameToIndex.end())
 				continue;
 			uint64_t flagId = towerFlags.GetFlag(typeName);
 			if (flagId == 0)
 			{
 				Print(LogLevel::WARNING,
-					"TowerInfo: TypeName '%s' found in '%s' has no tower flag – "
+					"TowerInfo: TypeName '%s' found in '%s' has no tower flag - "
 					"ensure it is listed in Flags.json",
 					typeName.c_str(), path.c_str());
 				continue;
 			}
-			// Clone the vanilla entry and register it as a dynamic tower definition.
 			TowerInfoDefinition def;
 			def.towerType = typeName;
 			def.towerId = flagId;
@@ -216,7 +208,7 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 			idToIndex[flagId] = idx;
 			definitions.push_back(std::move(def));
 			Print(LogLevel::INFO,
-				"TowerInfo: late-bound TypeName '%s' from '%s' → tower ID %llu",
+				"TowerInfo: late-bound TypeName '%s' from '%s' -> tower ID %llu",
 				typeName.c_str(), path.c_str(), flagId);
 		}
 	}
@@ -328,12 +320,41 @@ bool TowerInfoExt::AugmentBuildingsJson(nlohmann::json& root, const Util::FlagMa
 			building["SubItems"] = nlohmann::json::array();
 
 		auto& subItems = building["SubItems"];
+		nlohmann::json templateItem = {
+			{ "Type", "Present" },
+			{ "Position", nlohmann::json::array({ 0, 0 }) },
+			{ "ButtonOffset", nlohmann::json::array({ 0, 0 }) },
+			{ "Radius", 50 }
+		};
 		std::unordered_set<std::string> existing;
-		for (const auto& item : subItems)
+		size_t insertIndex = subItems.size();
+		bool foundHeliPilot = false;
+		for (auto itemIt = subItems.begin(); itemIt != subItems.end();)
 		{
-			if (item.is_object() && item.contains("Tower"))
-				existing.insert(item["Tower"].get<std::string>());
+			if (!itemIt->is_object() || !itemIt->contains("Tower"))
+			{
+				++itemIt;
+				continue;
+			}
+
+			const std::string tower = (*itemIt)["Tower"].get<std::string>();
+			if (tower == "BigRedButton")
+			{
+				itemIt = subItems.erase(itemIt);
+				changed = true;
+				continue;
+			}
+			existing.insert(tower);
+			if (tower == "HeliPilot")
+			{
+				templateItem = *itemIt;
+				insertIndex = static_cast<size_t>(std::distance(subItems.begin(), itemIt)) + 1;
+				foundHeliPilot = true;
+			}
+			++itemIt;
 		}
+		if (!foundHeliPilot)
+			insertIndex = subItems.size();
 
 		for (const auto& [towerId, towerName] : towerFlags.GetAll())
 		{
@@ -353,13 +374,10 @@ bool TowerInfoExt::AugmentBuildingsJson(nlohmann::json& root, const Util::FlagMa
 			if (!canView)
 				continue;
 
-			subItems.push_back({
-				{ "Type", "Present" },
-				{ "Tower", towerName },
-				{ "Position", nlohmann::json::array({ 0, 0 }) },
-				{ "ButtonOffset", nlohmann::json::array({ 0, 0 }) },
-				{ "Radius", 50 }
-			});
+			nlohmann::json customItem = templateItem;
+			customItem["Tower"] = towerName;
+			subItems.insert(subItems.begin() + insertIndex, customItem);
+			++insertIndex;
 			changed = true;
 			Print(LogLevel::INFO, "TowerInfo: added '%s' to TowerInfoScreen Buildings.json", towerName.c_str());
 		}
@@ -396,7 +414,7 @@ void TowerInfoExt::RefreshBuildingsScreenEntries(const Util::FlagManager& towerF
 	if (towerFlags.GetAll().empty())
 	{
 		Print(LogLevel::WARNING,
-			"TowerInfo: cannot refresh Buildings.json — tower flags not registered yet");
+			"TowerInfo: cannot refresh Buildings.json - tower flags not registered yet");
 		return;
 	}
 
@@ -413,7 +431,26 @@ void TowerInfoExt::RefreshBuildingsScreenEntries(const Util::FlagManager& towerF
 	{
 		nlohmann::json merged;
 		if (!ReadMergedJsonEntry(entryPath, merged))
-			continue;
+		{
+			if (server)
+			{
+				if (auto served = server->Serve(fs::path(entryPath), std::vector<uint8_t>{}))
+				{
+					try
+					{
+						const std::vector<uint8_t> raw = served->GetData();
+						merged = nlohmann::json::parse(
+							std::string(reinterpret_cast<const char*>(raw.data()), raw.size()),
+							nullptr, true, true);
+					}
+					catch (const std::exception&)
+					{
+					}
+				}
+			}
+			if (merged.is_null())
+				continue;
+		}
 
 		std::vector<uint8_t> mergedVec;
 		{

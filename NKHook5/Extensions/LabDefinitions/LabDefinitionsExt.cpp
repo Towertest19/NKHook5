@@ -1,6 +1,5 @@
 #include "LabDefinitionsExt.h"
 
-#include "../../Assets/AssetServer.h"
 #include "../../Util/JetJsonLoader.h"
 
 #include <Logging/Logger.h>
@@ -139,22 +138,6 @@ void LabDefinitionsExt::UseJsonData(nlohmann::json content)
         }
 }
 
-void LabDefinitionsExt::LoadMergedDefinition(const std::string& entryPath, nlohmann::json content)
-{
-        if (content.is_object() && !content.contains("Name"))
-        {
-                const size_t slash = entryPath.find_last_of('/');
-                std::string stem = slash == std::string::npos ? entryPath : entryPath.substr(slash + 1);
-                const size_t dot = stem.find_last_of('.');
-                if (dot != std::string::npos)
-                        stem = stem.substr(0, dot);
-                if (!stem.empty())
-                        content["Name"] = "LOC_LAB_" + stem;
-        }
-
-        UseJsonData(std::move(content));
-}
-
 void LabDefinitionsExt::PreloadRuntime()
 {
         if (runtimePreloaded)
@@ -163,19 +146,6 @@ void LabDefinitionsExt::PreloadRuntime()
         Print(LogLevel::INFO, "LabDefinitions: priming runtime state without scanning Assets/JSON/LabDefinitions.");
 
         LoadLabShopOrder();
-
-        if (AssetServer* server = AssetServer::GetServer())
-        {
-                for (const std::string& path : server->CollectEntryPaths("Assets/JSON/LabDefinitions/", ".json"))
-                {
-                        if (path.find("CacheList") != std::string::npos)
-                                continue;
-
-                        nlohmann::json merged;
-                        if (ReadMergedJsonEntry(path, merged))
-                                LoadMergedDefinition(path, std::move(merged));
-                }
-        }
 
         runtimePreloaded = true;
 

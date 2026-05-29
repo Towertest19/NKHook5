@@ -12,6 +12,7 @@ namespace Common::Files {
 		std::string password;
 		size_t compressionLevel;
 		bool closed;
+		bool dirty;
 	public:
 		ZipBase();
 		explicit ZipBase(std::filesystem::path zipFile, std::string password = "");
@@ -21,6 +22,7 @@ namespace Common::Files {
 		[[nodiscard]] size_t GetSize() const override;
 		virtual void SetPassword(const std::string& password);
 		virtual void SetCompressionLevel(size_t level);
+		virtual void MarkDirty();
 		[[nodiscard]] std::vector<std::string> GetEntries() const;
 		[[nodiscard]] bool HasEntry(const std::string& entry) const;
 		virtual std::vector<uint8_t> ReadEntry(const std::string& entry);

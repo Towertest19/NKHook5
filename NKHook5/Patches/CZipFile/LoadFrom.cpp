@@ -80,8 +80,6 @@ namespace NKHook5::Patches::CZipFile
 		//Get the AssetServer
 		AssetServer* server = AssetServer::GetServer();
 		const std::string assetPathStr(assetPath.c_str(), assetPath.length());
-		const bool isSpecialtyDefinition =
-			assetPathStr.rfind("Assets/JSON/SpecialtyDefinitions/", 0) == 0;
 
 		//Serve the asset (vanilla + mod .nkh merge)
 		std::shared_ptr<Asset> servedAsset = server->Serve(assetPath, vanillaData);
@@ -90,9 +88,6 @@ namespace NKHook5::Patches::CZipFile
 		std::vector<uint8_t> extensionData = vanillaData;
 		if (servedAsset != nullptr)
 			extensionData = servedAsset->GetData();
-
-		if (isSpecialtyDefinition)
-			SpecialtyDefinitionsExt::PatchMergedAssetBytes(extensionData);
 
 		const bool isMainMenuBuildingsJson =
 			assetPathStr.rfind("Assets/JSON/ScreenDefinitions/MainMenu/Buildings", 0) == 0 &&
@@ -159,8 +154,6 @@ namespace NKHook5::Patches::CZipFile
 		//If there is an asset to serve
 		if (servedAsset != nullptr) {
 			std::vector<uint8_t> servedData = extensionData.empty() ? servedAsset->GetData() : extensionData;
-			if (isSpecialtyDefinition)
-				SpecialtyDefinitionsExt::PatchMergedAssetBytes(servedData);
 
 			if (pAsset) {
 				//Create a copy
