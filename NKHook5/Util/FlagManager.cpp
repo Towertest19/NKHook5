@@ -67,14 +67,22 @@ bool FlagManager::IsIDAvailable(uint64_t id) const
 
 bool FlagManager::IsVanilla(uint64_t id)
 {
-	for (int i = 0; i < 100; i++) {
-		uint64_t numericId = static_cast<uint64_t>(1) << i;
-		if (numericId == id)
-		{
-			return true;
-		}
-	}
-	return false;
+	return IsBitFlag(id);
+}
+
+bool FlagManager::IsBaseTower(uint64_t id)
+{
+	return id >= (1ull << 2ull) && id <= (1ull << 24ull) && IsBitFlag(id);
+}
+
+bool FlagManager::IsCustomBitFlag(uint64_t id)
+{
+	return id >= (1ull << 59ull) && IsBitFlag(id);
+}
+
+bool FlagManager::IsCustomFallbackId(uint64_t id)
+{
+	return id > 0 && id < (1ull << 59ull) && !IsBitFlag(id);
 }
 
 uint64_t FlagManager::GetFlag(const std::string& name) const

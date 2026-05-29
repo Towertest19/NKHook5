@@ -29,7 +29,7 @@ namespace NKHook5
 				uint64_t towerId = 0;
 				bool canBeViewedSpecified = false;
 				bool canBeViewed = true;
-				bool canBeUnlocked = true; // Whether upgrade unlock notifications are allowed
+				bool canBeUnlocked = true;
 				std::string customDescription;  // Optional custom description
 			};
 
@@ -52,14 +52,12 @@ namespace NKHook5
 				bool IsRuntimePreloaded() const { return runtimePreloaded; }
 				virtual bool BindDefinitionId(const std::string& towerType, uint64_t towerId);
 				
-				// Check if tower should be displayed in info panel
-				// For vanilla towers: always true (backward compatible)
-				// For custom towers: explicit CanBeViewed=false hides; otherwise show.
 				virtual bool ShouldDisplayInInfoPanel(const std::string& towerType, bool isCustomTower) const;
 				virtual bool ShouldDisplayInInfoPanel(uint64_t towerId, const std::string& towerType, bool isCustomTower) const;
-				
-				// Check if tower should hide upgrade unlock notifications
 				virtual bool ShouldHideUpgradeUnlocks(const std::string& towerType) const;
+				virtual bool ShouldHideUpgradeUnlocks(uint64_t towerId, const std::string& towerType) const;
+				virtual bool CanUnlockTower(const std::string& towerType) const;
+				virtual bool CanUnlockTower(uint64_t towerId, const std::string& towerType) const;
 
 				static bool AugmentBuildingsJson(nlohmann::json& buildings, const Util::FlagManager& towerFlags);
 				static bool TryAugmentBuildingsBytes(std::vector<uint8_t>& data, const Util::FlagManager& towerFlags);
