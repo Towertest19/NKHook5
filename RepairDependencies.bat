@@ -4,7 +4,7 @@ setlocal EnableExtensions EnableDelayedExpansion
 pushd "%~dp0" || exit /b 1
 
 echo === NKHook5 dependency repair ===
-echo This refreshes the CMake/FetchContent dependency cache, then rebuilds json_spirit.
+echo This repairs the json_spirit FetchContent cache, then rebuilds json_spirit.
 echo.
 
 where cmake >nul 2>nul
@@ -21,11 +21,8 @@ echo [1/5] Removing stale CMake configure files...
 if exist "bin\CMakeCache.txt" del /f /q "bin\CMakeCache.txt"
 if exist "bin\CMakeFiles" rmdir /s /q "bin\CMakeFiles"
 
-echo [2/5] Removing cached FetchContent sources for Boost/json_spirit...
+echo [2/5] Removing cached FetchContent folders for json_spirit only...
 for %%D in (
-	"bin\_deps\boost-build"
-	"bin\_deps\boost-src"
-	"bin\_deps\boost-subbuild"
 	"bin\_deps\jsonspirit-build"
 	"bin\_deps\jsonspirit-src"
 	"bin\_deps\jsonspirit-subbuild"
