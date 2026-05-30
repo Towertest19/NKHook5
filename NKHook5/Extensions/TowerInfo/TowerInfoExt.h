@@ -41,6 +41,9 @@ namespace NKHook5
 				bool loadedAny = false;
 				bool runtimePreloaded = false;
 				size_t firstCustomDefinitionIndex = 0;
+				bool registrationFinalized = false;
+				size_t finalizedFlagCount = 0;
+				size_t finalizedDefinitionCount = 0;
 			public:
 				TowerInfoExt();
 				virtual const std::vector<TowerInfoDefinition>& GetDefinitions() const;
@@ -49,6 +52,7 @@ namespace NKHook5
 				virtual void UseJsonData(nlohmann::json content);
 				virtual void PreloadRuntime();
 				virtual void FinalizeTowerRegistration(const Util::FlagManager& towerFlags);
+				virtual std::vector<TowerInfoDefinition> GetRuntimeOrderedDefinitions() const;
 				bool IsRuntimePreloaded() const { return runtimePreloaded; }
 				virtual bool BindDefinitionId(const std::string& towerType, uint64_t towerId);
 				

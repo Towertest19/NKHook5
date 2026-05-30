@@ -12,6 +12,8 @@
 #include <cstdint>
 #include <unordered_set>
 
+#include <string>
+
 extern NKHook5::Util::FlagManager g_towerFlags;
 
 namespace NKHook5
@@ -29,17 +31,27 @@ namespace NKHook5
             using namespace Common::Logging::Logger;
 
             static uint64_t o_func;
+
+            namespace
+            {
+                constexpr uint64_t kGameDummyFlag = 1ull << 58ull;
+
+                bool IsSaveRegistrationExcluded(uint64_t flag, const std::string& towerType)
+                {
+                    return flag == kGameDummyFlag || towerType == "GameDummy";
+                }
+            }
             bool __fastcall cb_hook(Classes::CPlayerProfileV1* profile, int pad, class CBaseFileIO* pFileIO, nfw::string fileName, bool param_3) {
                 bool result = PLH::FnCast(o_func, &cb_hook)(profile, pad, pFileIO, fileName, param_3);
                 /*SaveData* customData = SaveData::GetInstance();
                 customData->Load("./Modded.save");*/
-                //Add all towers to the profile
-                Print("Adding all towers to save...");
+                // Add custom towers to the profile without touching vanilla helper slots.
+                Print(LogLevel::DEBUG, "Adding custom towers to save...");
                 const auto& allTowerFlags = g_towerFlags.GetAll();
                 std::unordered_set<std::string> unlockedNames;
                 auto* towerInfoExt = ExtensionManager::Get<TowerInfoExt>();
                 for (const auto& [flag, str] : allTowerFlags) {
-                    if (str.empty() || str == "INVALID")
+                    if (str.empty() || str == "INVALID" || IsSaveRegistrationExcluded(flag, str))
                         continue;
                     if (flag < (1ull << 59) && !Util::FlagManager::IsCustomFallbackId(flag))
                         continue;
@@ -55,14 +67,14 @@ namespace NKHook5
                         if (!towerInfoExt->CanUnlockTower(flag, str)) {
                             profile->towerUnlocks[flag] = false;
                             profile->unlockedLevel4[flag] = false;
-                            Print("Tower '%s' with ID '%llx' left locked by TowerInfo CanBeUnlocked=false", str.c_str(), flag);
+                            Print(LogLevel::DEBUG, "Tower '%s' with ID '%llx' left locked by TowerInfo CanBeUnlocked=false", str.c_str(), flag);
                             continue;
                         }
                     }
                     profile->towerUnlocks[flag] = true;
-                    Print("Added tower '%s' with ID '%llx' to save", str.c_str(), flag);
+                    Print(LogLevel::DEBUG, "Added tower '%s' with ID '%llx' to save", str.c_str(), flag);
                 }
-                Print("Done!");
+                Print(LogLevel::DEBUG, "Custom tower save registration done.");
                 return result;
             }
 

@@ -419,6 +419,9 @@ void Signatures::FindAll() {
 	   reliable across builds. Keep enum slots but stop resolving addresses. */
 	pointerMap[Sigs::MonkeyLabScreen_CCTOR] = nullptr;
 	pointerMap[Sigs::SpecialtiesScreen_CCTOR] = nullptr;
+	pointerMap[Sigs::SpecialtiesScreen_TierSwitch] = Signatures::FindFirst(1,
+		"8B 9D 74 FF FF FF 83 FB 03 0F 87 A0 00 00 00 FF 24 9D"
+	);
 	/* TowerInfoScreen */
 	// TowerInfoScreen::SetTower - binary-verified unique pattern at VA=0x82B5D0
 	// (BTD5 v4.7 Steam/Kong). The function is a small __thiscall wrapper that:

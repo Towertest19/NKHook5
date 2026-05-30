@@ -64,13 +64,13 @@ namespace NKHook5::Patches::CLabFactory
 		const bool specialtyQuery = IsSpecialtyVanillaCap(vanillaMax);
 		const bool monkeyLabQuery = IsMonkeyLabVanillaCap(vanillaMax);
 
-		// Scope overrides by the vanilla cap the game uses for each definition type.
+		// Scope typed overrides by the vanilla cap the game uses for each definition type.
 		if (specialtyQuery && specExt)
 		{
 			const int dynMax = specExt->GetMaxLevel(labType);
 			if (dynMax > 0)
 			{
-				Print(LogLevel::INFO,
+				Print(LogLevel::DEBUG,
 					"GetMaxLevel(%d): override -> %d (SpecialtyDefinitionsExt, vanilla was %d)",
 					labType, dynMax, vanillaMax);
 				return dynMax;
@@ -82,7 +82,7 @@ namespace NKHook5::Patches::CLabFactory
 			const int dynMax = labExt->GetMaxLevel(labType);
 			if (dynMax > 0)
 			{
-				Print(LogLevel::INFO,
+				Print(LogLevel::DEBUG,
 					"GetMaxLevel(%d): override -> %d (LabDefinitionsExt, vanilla was %d)",
 					labType, dynMax, vanillaMax);
 				return dynMax;
@@ -90,22 +90,22 @@ namespace NKHook5::Patches::CLabFactory
 		}
 
 		int fallbackMax = vanillaMax;
-		if (specialtyQuery && specExt)
-		{
-			const int dynMax = specExt->GetFallbackMaxLevel(vanillaMax, labType);
-			if (dynMax > fallbackMax)
-				fallbackMax = dynMax;
-		}
 		if (monkeyLabQuery && labExt)
 		{
 			const int dynMax = labExt->GetFallbackMaxLevel(vanillaMax, labType);
 			if (dynMax > fallbackMax)
 				fallbackMax = dynMax;
+			else if (dynMax <= 0)
+			{
+				const int highestLabMax = labExt->GetHighestDefinedMaxLevel();
+				if (highestLabMax > fallbackMax)
+					fallbackMax = highestLabMax;
+			}
 		}
 
 		if (fallbackMax != vanillaMax)
 		{
-			Print(LogLevel::INFO,
+			Print(LogLevel::DEBUG,
 				"GetMaxLevel(%d): scoped fallback extended vanilla %d -> %d",
 				labType, vanillaMax, fallbackMax);
 		}
@@ -114,46 +114,13 @@ namespace NKHook5::Patches::CLabFactory
 
 	auto GetMaxLevel::Apply() -> bool
 	{
-		Print(LogLevel::INFO, "GetMaxLevel patch: locating CLabFactory::GetMaxLevel...");
+		Print(LogLevel::DEBUG, "GetMaxLevel patch: locating CLabFactory::GetMaxLevel...");
 
 		const void* address = Signatures::GetAddressOf(Sigs::CLabFactory_GetMaxLevel);
 		if (address)
 		{
-			Print(LogLevel::INFO, "GetMaxLevel patch: found at %p, applying hook...", address);
+			Print(LogLevel::DEBUG, "GetMaxLevel patch: found at %p, applying hook...", address);
 
-			{
-				MEMORY_BASIC_INFORMATION mbi{};
-				if (VirtualQuery(address, &mbi, sizeof(mbi)) && mbi.State == MEM_COMMIT)
-				{
-					const DWORD prot = (mbi.Protect & 0xFF);
-					const bool readable =
-						(prot == PAGE_READONLY)            ||
-						(prot == PAGE_READWRITE)           ||
-						(prot == PAGE_WRITECOPY)           ||
-						(prot == PAGE_EXECUTE_READ)        ||
-						(prot == PAGE_EXECUTE_READWRITE)   ||
-						(prot == PAGE_EXECUTE_WRITECOPY);
-					if (readable)
-					{
-						unsigned char b[8]{};
-						memcpy(b, address, sizeof(b));
-						Print(LogLevel::INFO,
-							"GetMaxLevel patch: target bytes: %02X %02X %02X %02X %02X %02X %02X %02X",
-							b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]);
-					}
-					else
-					{
-						Print(LogLevel::WARNING,
-							"GetMaxLevel patch: target not readable (protect=0x%X)",
-							static_cast<unsigned>(mbi.Protect));
-					}
-				}
-				else
-				{
-					Print(LogLevel::WARNING,
-						"GetMaxLevel patch: VirtualQuery failed for %p", address);
-				}
-			}
 
 			auto* detour = new PLH::x86Detour(
 				reinterpret_cast<uintptr_t>(address),
@@ -164,7 +131,7 @@ namespace NKHook5::Patches::CLabFactory
 			if (detour->hook())
 			{
 				SetVanillaGetMaxLevel(reinterpret_cast<VanillaGetMaxLevelFn>(o_func));
-				Print(LogLevel::INFO,
+				Print(LogLevel::DEBUG,
 					"GetMaxLevel patch: hooked successfully. "
 					"Dynamic lab/specialty levels active with scoped fallbacks.");
 				return true;
@@ -179,7 +146,7 @@ namespace NKHook5::Patches::CLabFactory
 		else
 		{
 			Print(LogLevel::WARNING, "GetMaxLevel patch: signature not found");
-			Print(LogLevel::INFO,
+			Print(LogLevel::DEBUG,
 				"GetMaxLevel patch: SpecialtyDefinitionsExt is still loaded "
 				"and available for name-based queries.");
 			return false;

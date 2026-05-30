@@ -1,6 +1,9 @@
 #include "FlagManager.h"
 
+#include <Logging/Logger.h>
+
 using namespace NKHook5::Util;
+using namespace Common::Logging::Logger;
 
 FlagManager::FlagManager() : nextSequentialId(1)
 {
@@ -25,7 +28,7 @@ uint64_t FlagManager::Register(const std::string& text)
 	nextSequentialId = id + 1;
 
 	Register(id, text);
-	printf("[FlagManager] Registered '%s' with ID %llu\n", text.c_str(), id);
+	Print(LogLevel::DEBUG, "FlagManager: registered '%s' with ID %llu", text.c_str(), id);
 	return id;
 }
 
@@ -41,14 +44,14 @@ uint64_t FlagManager::RegisterBitFlag(const std::string& text, int startBit)
 		uint64_t flagValue = 1ull << i;
 		if (IsIDAvailable(flagValue)) {
 			Register(flagValue, text);
-			printf("[FlagManager] Registered '%s' with bit flag 0x%llx (bit %d)\n",
+			Print(LogLevel::DEBUG, "FlagManager: registered '%s' with bit flag 0x%llx (bit %d)",
 				text.c_str(), flagValue, i);
 			return flagValue;
 		}
 	}
 
 	// Bit slots exhausted - fallback to numeric +1
-	printf("[FlagManager] WARNING: No bit slots for '%s', falling back to ID lookup\n", text.c_str());
+	Print(LogLevel::DEBUG, "FlagManager: no bit slots for '%s', falling back to ID lookup", text.c_str());
 	return Register(text);
 }
 

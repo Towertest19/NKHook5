@@ -41,6 +41,7 @@
 #include "GLRenderLayer/Draw.h"
 #include "OpenGL/Swapbuffers.h"
 #include "Screens/GetScreenForParadigm.h"
+#include "SpecialtiesScreen/PatchTierUi.h"
 #include "Unknown/CrtMalloc.h"
 #include "Unknown/GetDeltaLock60FPS.h"
 #include "Unknown/WinMain.h"
@@ -89,6 +90,7 @@ void PatchManager::ApplyAll()
     //PatchManager::ApplyPatch(new GLRenderLayer::Draw());
     PatchManager::ApplyPatch(new OpenGL::Swapbuffers());
     PatchManager::ApplyPatch(new Screens::GetScreenForParadigm());
+    PatchManager::ApplyPatch(new SpecialtiesScreen::PatchTierUi());
     PatchManager::ApplyPatch(new Unknown::CrtMalloc());
     //PatchManager::ApplyPatch(new Unknown::GetDeltaLock60FPS());
     PatchManager::ApplyPatch(new Unknown::WinMain());

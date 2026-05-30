@@ -47,6 +47,7 @@ namespace NKHook5::Extensions::LabDefinitions
                 int GetMaxLevel(const std::string& labName) const;
                 int GetMaxLevel(int labType) const;
                 int GetFallbackMaxLevel(int vanillaMaxLevel, int labType) const;
+                int GetHighestDefinedMaxLevel() const;
 
         };
 }
