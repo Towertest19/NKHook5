@@ -144,8 +144,19 @@ namespace NKHook5::Patches::TowerInfoScreen
 			CallSetTower(thisptr, pad, towerId);
 			return;
 		}
+		if (towerInfoExt && !towerInfoExt->IsRuntimePreloaded())
+			towerInfoExt->FinalizeTowerRegistration(g_towerFlags);
+
 		std::string towerName = g_towerFlags.GetName(towerId);
 		const bool registeredByFlags = !towerName.empty() && towerName != "INVALID";
+		if (registeredByFlags &&
+			!TowerInfoExt::IsVanillaTowerInfoTower(towerId, towerName) &&
+			!TowerInfoExt::IsCustomTowerInfoTower(towerId))
+		{
+			CallSetTower(thisptr, pad, towerId);
+			return;
+		}
+
 		if (towerInfoExt && registeredByFlags)
 		{
 			towerInfoExt->BindDefinitionId(towerName, towerId);
@@ -173,22 +184,26 @@ namespace NKHook5::Patches::TowerInfoScreen
 			towerName = def ? def->towerType : "INVALID";
 		}
 
+		const bool isCustomTower = TowerInfoExt::IsCustomTowerInfoTower(towerId);
 		bool shouldDisplay = true;
 		if (towerInfoExt)
 		{
-			shouldDisplay = towerInfoExt->ShouldDisplayInInfoPanel(towerId, towerName, true);
+			shouldDisplay = towerInfoExt->ShouldDisplayInInfoPanel(towerId, towerName, isCustomTower);
 		}
 
 		if (!shouldDisplay)
 		{
-			Print(LogLevel::INFO, "TowerInfoScreen: Hiding custom tower '%s' (ID: %llu) from info panel",
+			Print(LogLevel::INFO, "TowerInfoScreen: Hiding tower '%s' (ID: %llu) from info panel",
 				towerName.c_str(), towerId);
 			CallSetTower(thisptr, pad, 0);
 			return;
 		}
 
-		Print(LogLevel::INFO, "TowerInfoScreen: Displaying custom tower '%s' (ID: %llu, byFlags=%s, byTowerInfo=%s)",
-			towerName.c_str(), towerId, registeredByFlags ? "true" : "false", registeredByTowerInfo ? "true" : "false");
+		if (isCustomTower)
+		{
+			Print(LogLevel::INFO, "TowerInfoScreen: Displaying custom tower '%s' (ID: %llu, byFlags=%s, byTowerInfo=%s)",
+				towerName.c_str(), towerId, registeredByFlags ? "true" : "false", registeredByTowerInfo ? "true" : "false");
+		}
 		CallSetTower(thisptr, pad, towerId);
 	}
 }

@@ -1,12 +1,9 @@
 #include "LabDefinitionsExt.h"
 
-#include "../../Util/JetJsonLoader.h"
-
 #include <Logging/Logger.h>
 
 #include <algorithm>
 #include <cstring>
-#include <unordered_set>
 
 using namespace Common;
 using namespace Common::Extensions;
@@ -14,13 +11,9 @@ using namespace Common::Logging::Logger;
 using namespace NKHook5;
 using namespace NKHook5::Extensions;
 using namespace NKHook5::Extensions::LabDefinitions;
-using namespace NKHook5::Util;
 
 namespace
 {
-        static constexpr const char* kLabShopPath =
-                "Assets/JSON/ScreenDefinitions/MainMenu/LabShop.json";
-
         static bool IsMonkeyLabVanillaCap(int vanillaMax)
         {
                 return (vanillaMax >= 10 && vanillaMax <= 21) || vanillaMax == 13;
@@ -62,9 +55,11 @@ size_t LabDefinitionsExt::UpsertDefinition(LabDefinition def)
         if (it != nameToIndex.end())
         {
                 const size_t idx = it->second;
-                if (definitions[idx].labType >= 0)
+                if (def.labType < 0 && definitions[idx].labType >= 0)
                         def.labType = definitions[idx].labType;
                 definitions[idx] = std::move(def);
+                if (definitions[idx].labType >= 0)
+                        labTypeToIndex[definitions[idx].labType] = idx;
                 return idx;
         }
 
@@ -144,79 +139,11 @@ void LabDefinitionsExt::PreloadRuntime()
 
         Print(LogLevel::INFO, "LabDefinitions: priming runtime state without scanning Assets/JSON/LabDefinitions.");
 
-        LoadLabShopOrder();
-
         runtimePreloaded = true;
 
         Print(LogLevel::INFO,
                 "LabDefinitions: %zu definition(s) ready after runtime preload",
                 definitions.size());
-}
-
-void LabDefinitionsExt::LoadLabShopOrder()
-{
-        labShopOrder = ReadMergedShopTypes(kLabShopPath, "LabItems");
-        labShopRecordIndex = 0;
-        labTypeByShopType.clear();
-        modLabTypesApplied = false;
-
-        if (!labShopOrder.empty())
-        {
-                Print(LogLevel::INFO,
-                        "LabDefinitions: LabShop order has %zu monkey-lab entries",
-                        labShopOrder.size());
-        }
-}
-
-void LabDefinitionsExt::RecordLabShopQuery(int labType, int vanillaMaxLevel)
-{
-        if (!IsMonkeyLabVanillaCap(vanillaMaxLevel))
-                return;
-        if (labShopRecordIndex >= labShopOrder.size())
-                return;
-
-        const std::string& shopType = labShopOrder[labShopRecordIndex];
-        labTypeByShopType[shopType] = labType;
-        ++labShopRecordIndex;
-
-        Print(LogLevel::INFO,
-                "LabDefinitions: LabShop[%zu] '%s' -> labType %d (vanilla cap %d)",
-                labShopRecordIndex - 1, shopType.c_str(), labType, vanillaMaxLevel);
-
-        if (labShopRecordIndex >= labShopOrder.size())
-                ApplyModLabTypeBindings();
-}
-
-void LabDefinitionsExt::ApplyModLabTypeBindings()
-{
-	if (modLabTypesApplied)
-		return;
-
-	for (auto& def : definitions)
-	{
-		if (def.labType >= 0)
-			continue;
-
-		const std::string bare = StripLabLocPrefix(def.name);
-		auto it = labTypeByShopType.find(bare);
-		if (it == labTypeByShopType.end())
-		{
-			Print(LogLevel::INFO,
-				"LabDefinitions: '%s' has no labType (no LabShop.json entry matches '%s') – "
-				"labType remains -1",
-				def.name.c_str(), bare.c_str());
-			continue;
-		}
-
-		def.labType = it->second;
-		labTypeToIndex[def.labType] = nameToIndex[def.name];
-
-		Print(LogLevel::INFO,
-			"LabDefinitions: bound '%s' -> labType %d (maxLevel %d)",
-			def.name.c_str(), def.labType, def.maxLevel);
-	}
-
-	modLabTypesApplied = true;
 }
 
 const std::vector<LabDefinition>& LabDefinitionsExt::GetDefinitions() const
@@ -269,34 +196,4 @@ int LabDefinitionsExt::GetFallbackMaxLevel(int vanillaMaxLevel, int labType) con
         }
 
         return -1;
-}
-
-bool LabDefinitionsExt::AugmentLabShopJson(nlohmann::json& root) const
-{
-        if (!root.contains("LabItems") || !root["LabItems"].is_array())
-                root["LabItems"] = nlohmann::json::array();
-
-        std::unordered_set<std::string> existing;
-        for (const auto& item : root["LabItems"])
-        {
-                if (item.is_object() && item.contains("Type"))
-                        existing.insert(item["Type"].get<std::string>());
-        }
-
-        bool changed = false;
-        for (const LabDefinition& def : definitions)
-        {
-                std::string shopType = StripLabLocPrefix(def.name);
-                if (shopType.empty() || existing.contains(shopType))
-                        continue;
-
-                root["LabItems"].push_back({ { "Type", shopType } });
-                existing.insert(shopType);
-                changed = true;
-                Print(LogLevel::INFO,
-                        "LabDefinitions: added '%s' to LabShop.json",
-                        shopType.c_str());
-        }
-
-        return changed;
 }
