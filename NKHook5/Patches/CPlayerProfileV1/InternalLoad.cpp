@@ -40,6 +40,17 @@ namespace NKHook5
                 {
                     return flag == kGameDummyFlag || towerType == "GameDummy";
                 }
+
+                void EnsureCustomTowerXpMaps(Classes::CPlayerProfileV1* profile, uint64_t flag, bool canBeUnlocked)
+                {
+                    // Do not overwrite existing save progress: these maps double as the
+                    // runtime gate the vanilla profile code consults while awarding tower XP.
+                    if (profile->towerUnlocks.find(flag) == profile->towerUnlocks.end())
+                        profile->towerUnlocks[flag] = canBeUnlocked;
+
+                    if (profile->unlockedLevel4.find(flag) == profile->unlockedLevel4.end())
+                        profile->unlockedLevel4[flag] = false;
+                }
             }
             bool __fastcall cb_hook(Classes::CPlayerProfileV1* profile, int pad, class CBaseFileIO* pFileIO, nfw::string fileName, bool param_3) {
                 bool result = PLH::FnCast(o_func, &cb_hook)(profile, pad, pFileIO, fileName, param_3);
@@ -61,15 +72,13 @@ namespace NKHook5
                         if (canonical != 0 && Util::FlagManager::IsBitFlag(canonical))
                             continue;
                     }
+                    bool canBeUnlocked = true;
                     if (towerInfoExt) {
                         towerInfoExt->BindDefinitionId(str, flag);
-                        if (!towerInfoExt->CanUnlockTower(flag, str)) {
-                            profile->towerUnlocks[flag] = false;
-                            profile->unlockedLevel4[flag] = false;
-                            continue;
-                        }
+                        canBeUnlocked = towerInfoExt->CanUnlockTower(flag, str);
                     }
-                    profile->towerUnlocks[flag] = true;
+
+                    EnsureCustomTowerXpMaps(profile, flag, canBeUnlocked);
                 }
                 return result;
             }

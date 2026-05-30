@@ -92,8 +92,12 @@ namespace NKHook5::Patches::CLabFactory
 		int fallbackMax = vanillaMax;
 		if (specialtyQuery && specExt)
 		{
+			// Specialty screens ask GetMaxLevel for every stock labType. Only an
+			// explicitly bound JSON definition may extend past the vanilla IV cap;
+			// otherwise V-IX leak onto unrelated vanilla/mod entries and the game
+			// reads nonexistent price slots.
 			const int dynMax = specExt->GetFallbackMaxLevel(vanillaMax, labType);
-			if (dynMax > fallbackMax)
+			if (dynMax > fallbackMax && specExt->HasBoundDefinition(labType))
 				fallbackMax = dynMax;
 		}
 		else if (monkeyLabQuery && labExt)

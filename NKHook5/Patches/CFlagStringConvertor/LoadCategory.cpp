@@ -70,8 +70,14 @@ namespace NKHook5::Patches::CFlagStringConvertor
 				Print(LogLevel::DEBUG, "Injecting new types...");
 				if (towerFlagExt) {
 					for (const std::string& flagDef : towerFlagExt->GetFlags()) {
-						uint64_t moddedSlot = g_towerFlags.RegisterBitFlag(flagDef);
+						// BTD5's in-session tower XP bookkeeping only handles the stock
+						// tower bit range. Custom bits after GameDummy can be placed and
+						// targeted, but the XP pass never credits them. Use the numeric
+						// fallback namespace for custom tower type IDs so XP tracks them.
+						uint64_t moddedSlot = g_towerFlags.Register(flagDef);
 						allTowers.emplace_back(flagDef);
+						Print(LogLevel::DEBUG, "Injected custom tower '%s' at XP-safe fallback ID '%llu'",
+							flagDef.c_str(), moddedSlot);
 					}
 				}
 				Print(LogLevel::DEBUG, "New types injected!");

@@ -73,38 +73,7 @@ namespace NKHook5::Patches::SpecialtiesScreen
 			return false;
 		}
 
-
-		const uintptr_t panelLoop = Utils::FindPattern("8B 85 08 FE FF FF 40 89 85 08 FE FF FF 83 F8 04 0F 8C");
-		if (panelLoop)
-		{
-			const uint8_t maxPanelCount = 9;
-			if (!WritePatch(reinterpret_cast<void*>(panelLoop + 15), &maxPanelCount, sizeof(maxPanelCount)))
-			{
-				Print(LogLevel::ERR, "SpecialtiesScreen tier patch: failed to raise panel count");
-				return false;
-			}
-		}
-		else
-		{
-			Print(LogLevel::WARNING, "SpecialtiesScreen tier patch: panel loop signature not found");
-			return false;
-		}
-
-		const uintptr_t activePurchaseGate = Utils::FindPattern("8B 5E 28 89 5D A0 83 FB 04 0F 83");
-		if (!activePurchaseGate)
-		{
-			Print(LogLevel::WARNING, "SpecialtiesScreen tier patch: purchase cap signature not found");
-			return false;
-		}
-
-		const uint8_t maxPurchaseTier = 9;
-		if (!WritePatch(reinterpret_cast<void*>(activePurchaseGate + 8), &maxPurchaseTier, sizeof(maxPurchaseTier)))
-		{
-			Print(LogLevel::ERR, "SpecialtiesScreen tier patch: failed to raise purchase cap");
-			return false;
-		}
-
-		Print(LogLevel::DEBUG, "SpecialtiesScreen tier patch: runtime panels and purchase cap extended to IX");
+		Print(LogLevel::DEBUG, "SpecialtiesScreen tier patch: tier text switch extended to IX without forcing extra panels");
 		return true;
 	}
 }
