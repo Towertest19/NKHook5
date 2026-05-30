@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <string>
 
 using namespace Common;
 using namespace Common::Extensions;
@@ -47,6 +48,34 @@ namespace
                 }
                 return 0;
         }
+
+        static bool HasTierKey(const SpecialtyDefinition& def, int tier)
+        {
+                if (tier <= 0)
+                        return false;
+
+                for (const auto& key : def.tiers)
+                {
+                        if (RomanTierValue(key) == tier)
+                                return true;
+                }
+                return false;
+        }
+
+        static int ClampMaxLevelToDefinedData(const SpecialtyDefinition& def)
+        {
+                int maxDefinedTier = 0;
+                for (const auto& key : def.tiers)
+                        maxDefinedTier = std::max(maxDefinedTier, RomanTierValue(key));
+
+                if (maxDefinedTier == 0)
+                        maxDefinedTier = def.maxLevel;
+
+                if (def.priceCount > 0)
+                        maxDefinedTier = std::min(maxDefinedTier, static_cast<int>(def.priceCount));
+
+                return std::clamp(maxDefinedTier, 1, 9);
+        }
 }
 
 SpecialtyDefinitionsExt::SpecialtyDefinitionsExt()
@@ -85,6 +114,8 @@ size_t SpecialtyDefinitionsExt::UpsertDefinition(SpecialtyDefinition def)
                         def.labType = definitions[idx].labType;
                 if (def.fileName.empty())
                         def.fileName = definitions[idx].fileName;
+                if (def.priceCount == 0)
+                        def.priceCount = definitions[idx].priceCount;
                 definitions[idx] = std::move(def);
                 if (definitions[idx].labType >= 0)
                         labTypeToIndex[definitions[idx].labType] = idx;
@@ -150,6 +181,9 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
                 if (content.contains("LabType") && content["LabType"].is_number_integer())
                         def.labType = content["LabType"].get<int>();
 
+                if (content.contains("Prices") && content["Prices"].is_array())
+                        def.priceCount = content["Prices"].size();
+
                 if (content.contains("Effects") && content["Effects"].is_object())
                 {
                         const auto& effects = content["Effects"];
@@ -169,6 +203,8 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
                         def.maxLevel = content.value("MaxLevel", kVanillaMaxLevel);
                 }
 
+                def.maxLevel = ClampMaxLevelToDefinedData(def);
+
                 const size_t idx = UpsertDefinition(std::move(def));
 
                 std::string tierSummary;
@@ -180,9 +216,10 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
                 if (tierSummary.empty()) tierSummary = "(none)";
 
                 Print(LogLevel::DEBUG,
-                        "SpecialtyDefinitions: '%s' maxLevel=%d tiers=[%s] (labType=%d)",
+                        "SpecialtyDefinitions: '%s' maxLevel=%d prices=%zu tiers=[%s] (labType=%d)",
                         definitions[idx].name.c_str(),
                         definitions[idx].maxLevel,
+                        definitions[idx].priceCount,
                         tierSummary.c_str(),
                         definitions[idx].labType);
         }
@@ -246,6 +283,24 @@ int SpecialtyDefinitionsExt::GetMaxLevel(const std::string& name) const
         if (it != nameToIndex.end())
                 return definitions[it->second].maxLevel;
         return -1;
+}
+
+bool SpecialtyDefinitionsExt::HasTier(int labType, int tier) const
+{
+        const auto it = labTypeToIndex.find(labType);
+        if (it == labTypeToIndex.end())
+                return false;
+        const auto& def = definitions[it->second];
+        return tier <= def.maxLevel && HasTierKey(def, tier);
+}
+
+bool SpecialtyDefinitionsExt::HasTier(const std::string& name, int tier) const
+{
+        const auto it = nameToIndex.find(name);
+        if (it == nameToIndex.end())
+                return false;
+        const auto& def = definitions[it->second];
+        return tier <= def.maxLevel && HasTierKey(def, tier);
 }
 
 const SpecialtyDefinition* SpecialtyDefinitionsExt::GetDefinition(int labType) const

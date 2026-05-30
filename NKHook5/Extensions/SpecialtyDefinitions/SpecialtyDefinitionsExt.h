@@ -19,9 +19,10 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 		std::string building;
 		int labType;
 		int maxLevel;
+		size_t priceCount;
 		std::vector<std::string> tiers;
 
-		SpecialtyDefinition() : labType(-1), maxLevel(kVanillaMaxLevel) {}
+		SpecialtyDefinition() : labType(-1), maxLevel(kVanillaMaxLevel), priceCount(0) {}
 	};
 
 	class SpecialtyDefinitionsExt : public Common::Extensions::JsonExtension
@@ -48,6 +49,8 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 		int GetFallbackMaxLevel(int vanillaMaxLevel, int labType) const;
 		int GetHighestDefinedMaxLevel() const;
 		int GetMaxLevel(const std::string& name) const;
+		bool HasTier(int labType, int tier) const;
+		bool HasTier(const std::string& name, int tier) const;
 
 		const SpecialtyDefinition* GetDefinition(int labType) const;
 		const SpecialtyDefinition* GetDefinition(const std::string& name) const;
