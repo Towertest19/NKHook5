@@ -72,8 +72,9 @@ namespace
 
 		if (json.contains("CanBeUnlocked"))
 			def.canBeUnlocked = json.value("CanBeUnlocked", true);
-		else if (json.contains("HideUpgradeUnlocks"))
-			def.canBeUnlocked = !json.value("HideUpgradeUnlocks", false);
+
+		if (json.contains("HideUpgradeUnlocks") && json.value("HideUpgradeUnlocks", false))
+			def.hideUpgradeUnlocks = true;
 
 		if (json.contains("InfoDescription"))
 			def.customDescription = json.value("InfoDescription", "");
@@ -378,17 +379,21 @@ bool TowerInfoExt::IsVanillaTowerInfoTower(uint64_t towerId, const std::string& 
 
 bool TowerInfoExt::IsCustomTowerInfoTower(uint64_t towerId)
 {
-	return Util::FlagManager::IsCustomBitFlag(towerId) || Util::FlagManager::IsCustomFallbackId(towerId);
+	return Util::FlagManager::IsCustomTowerRuntimeId(towerId);
 }
 
 bool TowerInfoExt::ShouldHideUpgradeUnlocks(const std::string& towerType) const
 {
-	return !CanUnlockTower(towerType);
+	if (const TowerInfoDefinition* def = GetDefinition(towerType))
+		return def->hideUpgradeUnlocks;
+	return false;
 }
 
 bool TowerInfoExt::ShouldHideUpgradeUnlocks(uint64_t towerId, const std::string& towerType) const
 {
-	return !CanUnlockTower(towerId, towerType);
+	if (const TowerInfoDefinition* def = GetDefinition(towerId))
+		return def->hideUpgradeUnlocks;
+	return ShouldHideUpgradeUnlocks(towerType);
 }
 
 bool TowerInfoExt::CanUnlockTower(const std::string& towerType) const

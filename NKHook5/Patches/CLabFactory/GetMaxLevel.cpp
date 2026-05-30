@@ -95,12 +95,6 @@ namespace NKHook5::Patches::CLabFactory
 			const int dynMax = specExt->GetFallbackMaxLevel(vanillaMax, labType);
 			if (dynMax > fallbackMax)
 				fallbackMax = dynMax;
-			else if (dynMax <= 0)
-			{
-				const int highestSpecMax = specExt->GetHighestDefinedMaxLevel();
-				if (highestSpecMax > fallbackMax)
-					fallbackMax = highestSpecMax;
-			}
 		}
 		else if (monkeyLabQuery && labExt)
 		{

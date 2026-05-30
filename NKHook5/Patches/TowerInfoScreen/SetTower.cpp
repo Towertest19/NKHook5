@@ -197,11 +197,6 @@ namespace NKHook5::Patches::TowerInfoScreen
 			return;
 		}
 
-		if (isCustomTower)
-		{
-			Print(LogLevel::DEBUG, "TowerInfoScreen: Displaying custom tower '%s' (ID: %llu, byFlags=%s, byTowerInfo=%s)",
-				towerName.c_str(), towerId, registeredByFlags ? "true" : "false", registeredByTowerInfo ? "true" : "false");
-		}
 		CallSetTower(thisptr, pad, towerId);
 	}
 }

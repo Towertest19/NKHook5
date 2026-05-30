@@ -88,6 +88,11 @@ bool FlagManager::IsCustomFallbackId(uint64_t id)
 	return id > 0 && id < (1ull << 59ull) && !IsBitFlag(id);
 }
 
+bool FlagManager::IsCustomTowerRuntimeId(uint64_t id)
+{
+	return IsCustomBitFlag(id) || IsCustomFallbackId(id);
+}
+
 uint64_t FlagManager::GetFlag(const std::string& name) const
 {
 	for (const auto& flagData : flags) {

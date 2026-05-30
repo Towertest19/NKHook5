@@ -49,7 +49,7 @@ static void AppendLuaSearchPath(const char* varName, const std::string& prefixPa
         }
         if (SetEnvironmentVariableA(varName, next.c_str()))
         {
-                Print(LogLevel::INFO, "Lua env: set %s='%s'", varName, next.c_str());
+                Print(LogLevel::INFO, "Lua env: updated %s for NKHook script search paths", varName);
         }
         else
         {
@@ -73,7 +73,7 @@ int initialize() {
     const std::string autoload = "@Mods/Scripts/NKHookAutoload.lua";
     if (luaInit.empty()) {
         SetEnvironmentVariableA("LUA_INIT_5_3", autoload.c_str());
-        Print(LogLevel::INFO, "Lua env: set LUA_INIT_5_3='%s'", autoload.c_str());
+        Print(LogLevel::INFO, "Lua env: set NKHook autoload script");
     } else if (luaInit.find("NKHookAutoload") == std::string::npos) {
         const std::string merged = autoload + ";" + luaInit;
         SetEnvironmentVariableA("LUA_INIT_5_3", merged.c_str());
@@ -130,7 +130,12 @@ int initialize() {
         AppendLuaSearchPath("LUA_PATH_5_3", luaPathPrefix);
 
         // Optional native module search (if the game uses it)
+        std::string moduleDir = modDir;
+        size_t slash = moduleDir.find_last_of('/');
+        if (slash != std::string::npos)
+            moduleDir = moduleDir.substr(0, slash);
         std::string luaCPathPrefix =
+            moduleDir + "/?.dll;" +
             modDir + "/Scripts/?.dll;" +
             modDir + "/Assets/Scripts/?.dll";
         AppendLuaSearchPath("LUA_CPATH_5_3", luaCPathPrefix);
