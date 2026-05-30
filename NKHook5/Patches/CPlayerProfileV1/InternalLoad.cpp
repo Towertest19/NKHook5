@@ -46,7 +46,6 @@ namespace NKHook5
                 /*SaveData* customData = SaveData::GetInstance();
                 customData->Load("./Modded.save");*/
                 // Add custom towers to the profile without touching vanilla helper slots.
-                Print(LogLevel::DEBUG, "Adding custom towers to save...");
                 const auto& allTowerFlags = g_towerFlags.GetAll();
                 std::unordered_set<std::string> unlockedNames;
                 auto* towerInfoExt = ExtensionManager::Get<TowerInfoExt>();
@@ -67,14 +66,11 @@ namespace NKHook5
                         if (!towerInfoExt->CanUnlockTower(flag, str)) {
                             profile->towerUnlocks[flag] = false;
                             profile->unlockedLevel4[flag] = false;
-                            Print(LogLevel::DEBUG, "Tower '%s' with ID '%llx' left locked by TowerInfo CanBeUnlocked=false", str.c_str(), flag);
                             continue;
                         }
                     }
                     profile->towerUnlocks[flag] = true;
-                    Print(LogLevel::DEBUG, "Added tower '%s' with ID '%llx' to save", str.c_str(), flag);
                 }
-                Print(LogLevel::DEBUG, "Custom tower save registration done.");
                 return result;
             }
 

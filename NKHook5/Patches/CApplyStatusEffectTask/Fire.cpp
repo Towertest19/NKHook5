@@ -49,7 +49,8 @@ namespace NKHook5::Patches::CApplyStatusEffectTask
 			}
 			if (def == nullptr)
 			{
-				Print(LogLevel::ERR, "Failed to find a status effect with an ID of %llx", task->effectId);
+				if (task->effectId != 0)
+					Print(LogLevel::WARNING, "Skipped unknown custom status effect ID %llx", task->effectId);
 				return;
 			}
 			auto* effect = new ClassesEx::CInjectedStatusEffect(task->effectId, nfw::string{def->graphicName}, def->exceptMoab, task->gamePtrs->mTextureManager, task->damageRate, task->duration, task->speedScale);
