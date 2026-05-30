@@ -47,19 +47,17 @@ size_t Utils::FindPattern(std::string_view pattern)
                         if (addr >= base && addr < end) {
                                 if (!IsAddressExecutable(addr))
                                 {
-                                        Print(LogLevel::ERR, "Sig '%s' found non-executable address %p; rejecting match", 
-                                                pattern.data(), (void*)addr);
+                                        Print(LogLevel::ERR, "Signature scan matched a non-executable address; rejecting match");
                                         return 0;
                                 }
                                 return addr;
                         }
-                        Print(LogLevel::ERR, "Sig '%s' found address %p outside module range [%p - %p]", 
-                                pattern.data(), (void*)addr, (void*)base, (void*)end);
+                        Print(LogLevel::ERR, "Signature scan matched outside the module range");
                         return 0;
                 }
                 return NULL;
         } else {
-                Print(LogLevel::ERR, "Sig failed with '%s' (%s)", pattern.data(), magic_enum::enum_name(sig.error()).data());
+                Print(LogLevel::ERR, "Signature parse failed (%s)", magic_enum::enum_name(sig.error()).data());
         }
         return 0;
 }
@@ -83,13 +81,12 @@ size_t Utils::FindPattern(size_t rangeStart, size_t rangeEnd, std::string_view p
                         if (addr >= rangeStart && addr < rangeEnd) {
                                 return addr;
                         }
-                        Print(LogLevel::ERR, "Sig '%s' found address %p outside specified range [%p - %p]",
-                                pattern.data(), (void*)addr, (void*)rangeStart, (void*)rangeEnd);
+                        Print(LogLevel::ERR, "Signature scan matched outside the requested range");
                         return 0;
                 }
                 return NULL;
         } else {
-                Print(LogLevel::ERR, "Sig failed with '%s' (%s)", pattern.data(), magic_enum::enum_name(sig.error()).data());
+                Print(LogLevel::ERR, "Signature parse failed (%s)", magic_enum::enum_name(sig.error()).data());
         }
         return 0;
 }

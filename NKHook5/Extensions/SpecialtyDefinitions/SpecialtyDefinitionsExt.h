@@ -46,6 +46,7 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 
 		int GetMaxLevel(int labType) const;
 		int GetFallbackMaxLevel(int vanillaMaxLevel, int labType) const;
+		int GetHighestDefinedMaxLevel() const;
 		int GetMaxLevel(const std::string& name) const;
 
 		const SpecialtyDefinition* GetDefinition(int labType) const;

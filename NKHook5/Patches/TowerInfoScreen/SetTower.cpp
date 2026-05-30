@@ -38,7 +38,7 @@ namespace NKHook5::Patches::TowerInfoScreen
 		const auto* bytes = reinterpret_cast<const uint8_t*>(wrapperAddress);
 		if (bytes[kTailJumpOffset] != 0xE9)
 		{
-			Print(LogLevel::WARNING, "TowerInfoScreen SetTower patch: wrapper tail jump not found at %p", wrapperAddress);
+			Print(LogLevel::WARNING, "TowerInfoScreen SetTower patch: wrapper tail jump not found");
 			return 0;
 		}
 
@@ -53,8 +53,7 @@ namespace NKHook5::Patches::TowerInfoScreen
 		if (!towerInfoExt)
 			return;
 		towerInfoExt->FinalizeTowerRegistration(g_towerFlags);
-		const auto ordered = towerInfoExt->GetRuntimeOrderedDefinitions();
-		Print(LogLevel::DEBUG, "TowerInfoScreen: %zu runtime tower entries ready for UI ordering", ordered.size());
+		towerInfoExt->GetRuntimeOrderedDefinitions();
 	}
 
 	static void InvokeSetTowerImpl(void* thisptr, uint64_t towerId)
@@ -108,17 +107,9 @@ namespace NKHook5::Patches::TowerInfoScreen
 				if (vtable != 0)
 				{
 					o_setTowerImpl = *reinterpret_cast<uintptr_t*>(vtable + sizeof(void*) * 2);
-					Print(LogLevel::DEBUG,
-						"TowerInfoScreen SetTower patch: using RTTI vtable fallback impl at %p",
-						reinterpret_cast<void*>(o_setTowerImpl));
 				}
 			}
-			else
-			{
-				Print(LogLevel::DEBUG, "TowerInfoScreen SetTower patch: resolved implementation at %p", reinterpret_cast<void*>(o_setTowerImpl));
-			}
-
-			Print(LogLevel::DEBUG, "TowerInfoScreen SetTower patch: Found function at %p, applying hook...", address);
+			Print(LogLevel::DEBUG, "TowerInfoScreen SetTower patch: applying hook...");
 			auto* detour = new PLH::x86Detour((const uintptr_t)address, (uintptr_t)&cb_hook_settower, &o_func);
 			if (detour->hook())
 			{
@@ -127,7 +118,7 @@ namespace NKHook5::Patches::TowerInfoScreen
 			}
 			else
 			{
-				Print(LogLevel::ERR, "TowerInfoScreen SetTower patch: Failed to hook function at %p", address);
+				Print(LogLevel::ERR, "TowerInfoScreen SetTower patch: Failed to hook function");
 				return false;
 			}
 		}
