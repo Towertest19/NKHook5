@@ -214,12 +214,30 @@ int SpecialtyDefinitionsExt::GetMaxLevel(int labType) const
         return -1;
 }
 
-int SpecialtyDefinitionsExt::GetFallbackMaxLevel(int vanillaMaxLevel, int /*labType*/) const
+int SpecialtyDefinitionsExt::GetFallbackMaxLevel(int vanillaMaxLevel, int labType) const
 {
         if (!IsSpecialtyVanillaCap(vanillaMaxLevel))
                 return -1;
 
+        const auto bound = labTypeToIndex.find(labType);
+        if (bound != labTypeToIndex.end())
+        {
+                const int jsonMax = definitions[bound->second].maxLevel;
+                return jsonMax > vanillaMaxLevel ? jsonMax : -1;
+        }
+
         return -1;
+}
+
+int SpecialtyDefinitionsExt::GetHighestDefinedMaxLevel() const
+{
+        int maxLevel = -1;
+        for (const auto& def : definitions)
+        {
+                if (def.maxLevel > maxLevel)
+                        maxLevel = def.maxLevel;
+        }
+        return maxLevel;
 }
 
 int SpecialtyDefinitionsExt::GetMaxLevel(const std::string& name) const

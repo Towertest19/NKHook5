@@ -45,19 +45,6 @@ namespace
 		return std::clamp(towerInfo->GetUpgradeCount(path), 0, kMaxRuntimeUpgradeTier);
 	}
 
-	bool ApplyRuntimeTowerUpgrade(Classes::CTowerFactory* towerFactory, Classes::STowerInfo* towerInfo, Classes::CBaseTower* tower, int32_t path, int32_t tier)
-	{
-		if (towerFactory == nullptr || towerInfo == nullptr || tower == nullptr)
-			return false;
-
-		if (path < 0 || path > 1 || tier < 0 || tier >= GetRuntimeUpgradeLimit(towerInfo, path))
-			return false;
-
-		const int32_t upgradeIndex[2] = { path, tier };
-		const int32_t upgradePath = path;
-		return towerFactory->ApplyUpgrade(towerInfo, tower, upgradeIndex, &upgradePath);
-	}
-
 	bool IsRuntimeEditorTogglePressed()
 	{
 		static bool wasEditorToggleDown = false;
@@ -76,7 +63,7 @@ namespace
 		return pressed || ImGui::IsKeyPressed(ImGuiKey_RightShift, false);
 	}
 
-	bool EditTowerUpgradeCounter(const char* label, Classes::CTowerFactory* towerFactory, Classes::STowerInfo* towerInfo, Classes::CBaseTower* tower, int32_t path, int32_t& counter)
+	bool EditTowerUpgradeCounter(const char* label, Classes::STowerInfo* towerInfo, Classes::CBaseTower* tower, int32_t path, int32_t& counter)
 	{
 		const int32_t oldCounter = counter;
 		int32_t requestedCounter = counter;
@@ -91,18 +78,10 @@ namespace
 			return requestedCounter != oldCounter;
 		}
 
-		counter = oldCounter;
-		bool appliedAnyUpgrade = false;
 		for (int32_t tier = oldCounter; tier < requestedCounter; ++tier)
-		{
-			if (!ApplyRuntimeTowerUpgrade(towerFactory, towerInfo, tower, path, tier))
-				break;
-
 			tower->IncrementUpgradePath(path);
-			appliedAnyUpgrade = true;
-		}
-
-		return appliedAnyUpgrade;
+		counter = requestedCounter;
+		return true;
 	}
 }
 
@@ -194,8 +173,8 @@ void Editor::Render() {
 						const int32_t leftBeforeEdit = tower->mLeftUpgrades;
 						const int32_t rightBeforeEdit = tower->mRightUpgrades;
 						auto* towerInfo = GetRuntimeTowerInfo(towerFactory, tower);
-						EditTowerUpgradeCounter("Left Upgrades", towerFactory, towerInfo, tower, kUpgradePathLeft, tower->mLeftUpgrades);
-						EditTowerUpgradeCounter("Right Upgrades", towerFactory, towerInfo, tower, kUpgradePathRight, tower->mRightUpgrades);
+						EditTowerUpgradeCounter("Left Upgrades", towerInfo, tower, kUpgradePathLeft, tower->mLeftUpgrades);
+						EditTowerUpgradeCounter("Right Upgrades", towerInfo, tower, kUpgradePathRight, tower->mRightUpgrades);
 						ImGui::Text("Upgrade limits: left %d, right %d",
 							GetRuntimeUpgradeLimit(towerInfo, kUpgradePathLeft),
 							GetRuntimeUpgradeLimit(towerInfo, kUpgradePathRight));

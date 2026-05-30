@@ -423,7 +423,7 @@ void Signatures::FindAll() {
 		"8B 9D 74 FF FF FF 83 FB 03 0F 87 A0 00 00 00 FF 24 9D"
 	);
 	/* TowerInfoScreen */
-	// TowerInfoScreen::SetTower - binary-verified unique pattern at VA=0x82B5D0
+	// TowerInfoScreen::SetTower - binary-verified unique pattern at VA=0x82C1D0
 	// (BTD5 v4.7 Steam/Kong). The function is a small __thiscall wrapper that:
 	//   1. Returns early (ret 8) if the lo32 of the tower ID is 0.
 	//   2. Sets byte [ecx+0x198]=1 (marks the screen as populated).
@@ -478,7 +478,7 @@ void* Signatures::GetAddressOf(Sigs sig)
 {
 	if (!pointerMap.contains(sig)) {
 		std::string_view enumName = magic_enum::enum_name(sig);
-		Print(LogLevel::WARNING, "Sig '%s' not registered in table", enumName.data());
+		Print(LogLevel::WARNING, "Signature entry '%s' not registered in table", enumName.data());
 		return nullptr;
 	}
 	return pointerMap[sig];

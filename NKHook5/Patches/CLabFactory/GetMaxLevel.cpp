@@ -90,7 +90,19 @@ namespace NKHook5::Patches::CLabFactory
 		}
 
 		int fallbackMax = vanillaMax;
-		if (monkeyLabQuery && labExt)
+		if (specialtyQuery && specExt)
+		{
+			const int dynMax = specExt->GetFallbackMaxLevel(vanillaMax, labType);
+			if (dynMax > fallbackMax)
+				fallbackMax = dynMax;
+			else if (dynMax <= 0)
+			{
+				const int highestSpecMax = specExt->GetHighestDefinedMaxLevel();
+				if (highestSpecMax > fallbackMax)
+					fallbackMax = highestSpecMax;
+			}
+		}
+		else if (monkeyLabQuery && labExt)
 		{
 			const int dynMax = labExt->GetFallbackMaxLevel(vanillaMax, labType);
 			if (dynMax > fallbackMax)
@@ -119,7 +131,7 @@ namespace NKHook5::Patches::CLabFactory
 		const void* address = Signatures::GetAddressOf(Sigs::CLabFactory_GetMaxLevel);
 		if (address)
 		{
-			Print(LogLevel::DEBUG, "GetMaxLevel patch: found at %p, applying hook...", address);
+			Print(LogLevel::DEBUG, "GetMaxLevel patch: applying hook...");
 
 
 			auto* detour = new PLH::x86Detour(
@@ -138,8 +150,7 @@ namespace NKHook5::Patches::CLabFactory
 			}
 			else
 			{
-				Print(LogLevel::ERR,
-					"GetMaxLevel patch: failed to hook at %p", address);
+				Print(LogLevel::ERR, "GetMaxLevel patch: failed to hook");
 				return false;
 			}
 		}

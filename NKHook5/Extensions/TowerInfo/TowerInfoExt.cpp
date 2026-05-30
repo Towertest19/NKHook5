@@ -196,11 +196,6 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 			if (!IsCustomTowerInfoTower(def.towerId))
 				continue;
 			idToIndex[def.towerId] = i;
-			Print(LogLevel::DEBUG, "TowerInfo: registered '%s' as tower ID %llu", def.towerType.c_str(), def.towerId);
-		}
-		else
-		{
-			Print(LogLevel::DEBUG, "TowerInfo: tower '%s' has no registered tower ID yet", def.towerType.c_str());
 		}
 	}
 
@@ -220,7 +215,6 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 		{
 			definitions[existing->second].towerId = towerId;
 			idToIndex[towerId] = existing->second;
-			Print(LogLevel::DEBUG, "TowerInfo: registered '%s' as tower ID %llu", towerName.c_str(), towerId);
 			continue;
 		}
 
@@ -233,7 +227,6 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 		nameToIndex[towerName] = idx;
 		idToIndex[towerId] = idx;
 		definitions.push_back(std::move(def));
-		Print(LogLevel::DEBUG, "TowerInfo: registered tower flag '%s' as tower ID %llu", towerName.c_str(), towerId);
 	}
 	registrationFinalized = true;
 	finalizedFlagCount = currentFlagCount;
@@ -310,7 +303,6 @@ bool TowerInfoExt::BindDefinitionId(const std::string& towerType, uint64_t tower
 	if (def.towerId != towerId)
 	{
 		def.towerId = towerId;
-		Print(LogLevel::DEBUG, "TowerInfo: late-bound '%s' to tower ID %llu", towerType.c_str(), towerId);
 	}
 	idToIndex[towerId] = it->second;
 	return true;

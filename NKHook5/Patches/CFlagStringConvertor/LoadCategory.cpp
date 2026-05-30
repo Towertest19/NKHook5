@@ -65,7 +65,6 @@ namespace NKHook5::Patches::CFlagStringConvertor
 					uint64_t numericId = static_cast<uint64_t>(1) << i;
 					g_towerFlags.Register(numericId, std::string(stringList[i]));
 					allTowers.emplace_back(stringList[i]);
-					Print(LogLevel::DEBUG, "Copied '%s' to slot '%llx'", stringList[i].c_str(), numericId);
 				}
 				Print(LogLevel::DEBUG, "Old types copied!");
 				Print(LogLevel::DEBUG, "Injecting new types...");
@@ -73,7 +72,6 @@ namespace NKHook5::Patches::CFlagStringConvertor
 					for (const std::string& flagDef : towerFlagExt->GetFlags()) {
 						uint64_t moddedSlot = g_towerFlags.RegisterBitFlag(flagDef);
 						allTowers.emplace_back(flagDef);
-						Print(LogLevel::DEBUG, "Injected '%s' at slot '%llx'", flagDef.c_str(), moddedSlot);
 					}
 				}
 				Print(LogLevel::DEBUG, "New types injected!");
@@ -105,7 +103,6 @@ namespace NKHook5::Patches::CFlagStringConvertor
 					uint64_t numericId = static_cast<uint64_t>(1) << i;
 					g_bloonFlags.Register(numericId, std::string(stringList[i]));
 					allBloons.emplace_back(stringList[i]);
-					Print(LogLevel::DEBUG, "Copied '%s' to slot '%llx'", stringList[i].c_str(), numericId);
 				}
 				Print(LogLevel::DEBUG, "Old types copied!");
 				Print(LogLevel::DEBUG, "Injecting new types...");
@@ -129,7 +126,6 @@ namespace NKHook5::Patches::CFlagStringConvertor
 					uint64_t numericId = static_cast<uint64_t>(1) << i;
 					g_bloonStatusFlags.Register(numericId, std::string(stringList[i]));
 					allEffects.emplace_back(stringList[i]);
-					Print(LogLevel::DEBUG, "Copied '%s' to slot '%llx'", stringList[i].c_str(), numericId);
 				}
 				Print(LogLevel::DEBUG, "Old types copied!");
 				Print(LogLevel::DEBUG, "Injecting new types...");
@@ -161,7 +157,6 @@ namespace NKHook5::Patches::CFlagStringConvertor
 					//We want all slots to use the custom slot system since there are more than can fit in the flag system
 					uint64_t numericId = g_weaponFlags.Register(std::string(stringList[i]));
 					allWeapons.push_back(stringList[i]);
-					Print(LogLevel::DEBUG, "Copied '%s' to slot '%llx'", stringList[i].c_str(), numericId);
 				}
 				Print(LogLevel::DEBUG, "Old types copied!");
 				Print(LogLevel::DEBUG, "Injecting new types...");
