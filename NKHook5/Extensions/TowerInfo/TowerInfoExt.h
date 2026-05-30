@@ -30,6 +30,7 @@ namespace NKHook5
 				bool canBeViewedSpecified = false;
 				bool canBeViewed = true;
 				bool canBeUnlocked = true;
+				bool hideUpgradeUnlocks = false;
 				std::string customDescription;  // Optional custom description
 			};
 

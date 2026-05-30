@@ -39,6 +39,7 @@
 #include "C_GameSFXManager/Play.h"
 #include "TowerInfoScreen/SetTower.h"
 #include "GLRenderLayer/Draw.h"
+#include "Lua/LuaScreenBridge.h"
 #include "OpenGL/Swapbuffers.h"
 #include "Screens/GetScreenForParadigm.h"
 #include "SpecialtiesScreen/PatchTierUi.h"
@@ -88,6 +89,7 @@ void PatchManager::ApplyAll()
     PatchManager::ApplyPatch(new C_GameSFXManager::Play());
     PatchManager::ApplyPatch(new TowerInfoScreen::SetTower());
     //PatchManager::ApplyPatch(new GLRenderLayer::Draw());
+    PatchManager::ApplyPatch(new Lua::LuaScreenBridge());
     PatchManager::ApplyPatch(new OpenGL::Swapbuffers());
     PatchManager::ApplyPatch(new Screens::GetScreenForParadigm());
     PatchManager::ApplyPatch(new SpecialtiesScreen::PatchTierUi());

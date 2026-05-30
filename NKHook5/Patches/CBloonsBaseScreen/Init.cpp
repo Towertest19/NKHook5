@@ -4,6 +4,7 @@
 #include "../../Assets/AssetServer.h"
 #include "../../Classes/CGameScreen.h"
 #include "../../Signatures/Signature.h"
+#include "../Lua/LuaScreenBridge.h"
 
 #include <Extensions/Textures/SheetsExtension.h>
 #include <Extensions/ExtensionManager.h>
@@ -24,6 +25,8 @@ namespace NKHook5::Patches::CBloonsBaseScreen
 
 		auto ofn = std::bit_cast<decltype(&Init::cb_hook)>(reinterpret_cast<void*>(o_func));
 		(this->*ofn)(pScreenData);
+
+		Lua::NotifyScreenInit(self);
 
 		auto* sheetsExt = ExtensionManager::Get<SheetsExtension>();
 		const std::vector<std::string>& sheetNames = sheetsExt->GetSheetNames();
