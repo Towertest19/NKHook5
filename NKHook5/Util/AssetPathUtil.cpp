@@ -21,4 +21,25 @@ namespace NKHook5::Util
 			return std::string("Assets/JSON/") + normalized.substr(strlen(kModPrefix));
 		return normalized;
 	}
+
+	std::string ToDefinitionAssetPath(const std::string& path)
+	{
+		const std::string normalized = ToAssetsJsonPath(path);
+		static constexpr const char* kJsonRoots[] = {
+			"LabDefinitions/",
+			"SpecialtyDefinitions/",
+			"TowerDefinitions/",
+			"StatusDefinitions/",
+			"WeaponDefinitions/",
+			"BloonDefinitions/",
+		};
+
+		for (const char* jsonRoot : kJsonRoots)
+		{
+			if (normalized.rfind(jsonRoot, 0) == 0)
+				return std::string("Assets/JSON/") + normalized;
+		}
+
+		return normalized;
+	}
 }

@@ -1,11 +1,8 @@
 #include "TowerInfoExt.h"
 
-#include "../../Assets/AssetServer.h"
 #include "../../Util/FlagManager.h"
 #include "../../Util/JetJsonLoader.h"
 
-#include <cstring>
-#include <iterator>
 
 #include <Extensions/ExtensionManager.h>
 #include <Logging/Logger.h>
@@ -16,12 +13,9 @@ using namespace Common;
 using namespace Common::Extensions;
 using namespace Common::Logging::Logger;
 using namespace NKHook5;
-using namespace NKHook5::Assets;
 using namespace NKHook5::Extensions;
 using namespace NKHook5::Extensions::TowerInfo;
 using namespace NKHook5::Util;
-
-namespace fs = std::filesystem;
 
 namespace
 {
@@ -94,7 +88,14 @@ TowerInfoExt::TowerInfoExt() : JsonExtension("TowerInfo", "*/Assets/JSON/TowerDe
 
 void TowerInfoExt::UseJsonData(nlohmann::json content)
 {
-	if (content.empty())
+	if (content.is_array())
+	{
+		for (const auto& item : content)
+			UseJsonData(item);
+		return;
+	}
+
+	if (!content.is_object() || content.empty())
 	{
 		Print(LogLevel::ERR, "Received empty json data for a TowerInfo definition");
 		return;
@@ -110,6 +111,8 @@ void TowerInfoExt::UseJsonData(nlohmann::json content)
 	{
 		TowerInfoDefinition def;
 		def.towerType = content["TypeName"].get<std::string>();
+		if (IsTowerInfoExcludedName(def.towerType))
+			return;
 		loadedAny = true;
 
 		ReadTowerInfoToggles(content, def);
@@ -181,9 +184,13 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 	for (size_t i = firstCustomDefinitionIndex; i < definitions.size(); ++i)
 	{
 		auto& def = definitions[i];
+		if (IsTowerInfoExcludedName(def.towerType))
+			continue;
 		def.towerId = towerFlags.GetFlag(def.towerType);
 		if (def.towerId != 0)
 		{
+			if (!IsCustomTowerInfoTower(def.towerId))
+				continue;
 			idToIndex[def.towerId] = i;
 			Print(LogLevel::INFO, "TowerInfo: registered '%s' as tower ID %llu", def.towerType.c_str(), def.towerId);
 		}
@@ -209,12 +216,15 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 		{
 			definitions[existing->second].towerId = towerId;
 			idToIndex[towerId] = existing->second;
+			Print(LogLevel::INFO, "TowerInfo: registered '%s' as tower ID %llu", towerName.c_str(), towerId);
 			continue;
 		}
 
 		TowerInfoDefinition def;
 		def.towerType = towerName;
 		def.towerId = towerId;
+		def.canBeViewed = true;
+		def.canBeViewedSpecified = true;
 		const size_t idx = definitions.size();
 		nameToIndex[towerName] = idx;
 		idToIndex[towerId] = idx;
@@ -222,48 +232,14 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 		Print(LogLevel::INFO, "TowerInfo: registered tower flag '%s' as tower ID %llu", towerName.c_str(), towerId);
 	}
 
-	if (AssetServer* server = AssetServer::GetServer())
-	{
-		for (const auto& path : server->CollectEntryPaths("Assets/JSON/TowerDefinitions/", ".tower"))
-		{
-			nlohmann::json merged;
-			if (!ReadMergedJsonEntry(path, merged))
-				continue;
-			if (!merged.is_object() || !merged.contains("TypeName"))
-				continue;
-			std::string typeName = merged.value("TypeName", "");
-			if (typeName.empty())
-				continue;
-			if (nameToIndex.find(typeName) != nameToIndex.end())
-				continue;
-			uint64_t flagId = towerFlags.GetFlag(typeName);
-			if (flagId == 0)
-			{
-				Print(LogLevel::WARNING,
-					"TowerInfo: TypeName '%s' found in '%s' has no tower flag - "
-					"ensure it is listed in Flags.json",
-					typeName.c_str(), path.c_str());
-				continue;
-			}
-			TowerInfoDefinition def;
-			def.towerType = typeName;
-			def.towerId = flagId;
-			ReadTowerInfoToggles(merged, def);
-			const size_t idx = definitions.size();
-			nameToIndex[typeName] = idx;
-			idToIndex[flagId] = idx;
-			definitions.push_back(std::move(def));
-			Print(LogLevel::INFO,
-				"TowerInfo: late-bound TypeName '%s' from '%s' -> tower ID %llu",
-				typeName.c_str(), path.c_str(), flagId);
-		}
-	}
 }
 
 
 bool TowerInfoExt::BindDefinitionId(const std::string& towerType, uint64_t towerId)
 {
 	if (towerId == 0 || towerType.empty() || towerType == "INVALID")
+		return false;
+	if (IsTowerInfoExcludedName(towerType) || (!IsCustomTowerInfoTower(towerId) && !IsVanillaTowerInfoTower(towerId, towerType)))
 		return false;
 
 	const auto it = nameToIndex.find(towerType);
@@ -286,6 +262,8 @@ bool TowerInfoExt::ShouldDisplayInInfoPanel(const std::string& towerType, bool i
 	{
 		return true;
 	}
+	if (IsTowerInfoExcludedName(towerType))
+		return false;
 
 	if (!loadedAny)
 	{
@@ -312,6 +290,11 @@ bool TowerInfoExt::ShouldDisplayInInfoPanel(const std::string& towerType, bool i
 
 bool TowerInfoExt::ShouldDisplayInInfoPanel(uint64_t towerId, const std::string& towerType, bool isCustomTower) const
 {
+	if (IsTowerInfoExcludedName(towerType))
+		return false;
+	if (!IsCustomTowerInfoTower(towerId) && !IsVanillaTowerInfoTower(towerId, towerType))
+		return false;
+
 	if (const TowerInfoDefinition* def = GetDefinition(towerId))
 	{
 		if (def->canBeViewedSpecified)
@@ -377,170 +360,4 @@ bool TowerInfoExt::CanUnlockTower(uint64_t towerId, const std::string& towerType
 		return def->canBeUnlocked;
 
 	return CanUnlockTower(towerType);
-}
-
-bool TowerInfoExt::AugmentBuildingsJson(nlohmann::json& root, const Util::FlagManager& towerFlags)
-{
-	if (!root.contains("Buildings") || !root["Buildings"].is_array())
-		return false;
-
-	TowerInfoExt* towerInfoExt = ExtensionManager::Get<TowerInfoExt>();
-	bool changed = false;
-
-	for (auto& building : root["Buildings"])
-	{
-		if (!building.is_object() || building.value("Screen", "") != "TowerInfoScreen")
-			continue;
-		if (!building.contains("SubItems") || !building["SubItems"].is_array())
-			building["SubItems"] = nlohmann::json::array();
-
-		auto& subItems = building["SubItems"];
-		nlohmann::json templateItem = {
-			{ "Type", "Present" },
-			{ "Position", nlohmann::json::array({ 0, 0 }) },
-			{ "ButtonOffset", nlohmann::json::array({ 0, 0 }) },
-			{ "Radius", 50 }
-		};
-		std::unordered_set<std::string> existing;
-		size_t insertIndex = subItems.size();
-		bool foundHeliPilot = false;
-		for (auto itemIt = subItems.begin(); itemIt != subItems.end();)
-		{
-			if (!itemIt->is_object() || !itemIt->contains("Tower"))
-			{
-				++itemIt;
-				continue;
-			}
-
-			const std::string tower = (*itemIt)["Tower"].get<std::string>();
-			const uint64_t towerId = towerFlags.GetFlag(tower);
-			if (tower == "BigRedButton" ||
-				IsTowerInfoExcludedName(tower) ||
-				(towerId != 0 && !IsVanillaTowerInfoTower(towerId, tower) && !IsCustomTowerInfoTower(towerId)))
-			{
-				itemIt = subItems.erase(itemIt);
-				changed = true;
-				continue;
-			}
-			existing.insert(tower);
-			if (tower == "HeliPilot")
-			{
-				templateItem = *itemIt;
-				insertIndex = static_cast<size_t>(std::distance(subItems.begin(), itemIt)) + 1;
-				foundHeliPilot = true;
-			}
-			++itemIt;
-		}
-		if (!foundHeliPilot)
-			insertIndex = subItems.size();
-
-		for (const auto& [towerId, towerName] : towerFlags.GetAll())
-		{
-			if (towerName.empty() || towerName == "INVALID")
-				continue;
-			if (IsTowerInfoExcludedName(towerName))
-				continue;
-			if (!IsCustomTowerInfoTower(towerId))
-				continue;
-			if (!existing.insert(towerName).second)
-				continue;
-
-			bool canView = true;
-			if (towerInfoExt)
-				canView = towerInfoExt->ShouldDisplayInInfoPanel(towerName, true);
-
-			if (!canView)
-				continue;
-
-			nlohmann::json customItem = templateItem;
-			customItem["Tower"] = towerName;
-			subItems.insert(subItems.begin() + insertIndex, customItem);
-			++insertIndex;
-			changed = true;
-			Print(LogLevel::INFO, "TowerInfo: added '%s' to TowerInfoScreen Buildings.json", towerName.c_str());
-		}
-	}
-
-	return changed;
-}
-
-bool TowerInfoExt::TryAugmentBuildingsBytes(std::vector<uint8_t>& data, const Util::FlagManager& towerFlags)
-{
-	if (data.empty() || towerFlags.GetAll().empty())
-		return false;
-
-	try
-	{
-		nlohmann::json buildings = nlohmann::json::parse(
-			std::string(reinterpret_cast<const char*>(data.data()), data.size()),
-			nullptr, true, true);
-		if (!AugmentBuildingsJson(buildings, towerFlags))
-			return false;
-
-		const std::string patched = buildings.dump();
-		data.assign(patched.begin(), patched.end());
-		return true;
-	}
-	catch (const std::exception&)
-	{
-		return false;
-	}
-}
-
-void TowerInfoExt::RefreshBuildingsScreenEntries(const Util::FlagManager& towerFlags)
-{
-	if (towerFlags.GetAll().empty())
-	{
-		Print(LogLevel::WARNING,
-			"TowerInfo: cannot refresh Buildings.json - tower flags not registered yet");
-		return;
-	}
-
-	static constexpr const char* kBuildingPaths[] = {
-		"Assets/JSON/ScreenDefinitions/MainMenu/Buildings.json",
-		"Assets/JSON/ScreenDefinitions/MainMenu/BuildingsNoSocial.json",
-	};
-
-	AssetServer* server = AssetServer::GetServer();
-	if (!server)
-		return;
-
-	for (const char* entryPath : kBuildingPaths)
-	{
-		nlohmann::json merged;
-		if (!ReadMergedJsonEntry(entryPath, merged))
-		{
-			if (server)
-			{
-				if (auto served = server->Serve(fs::path(entryPath), std::vector<uint8_t>{}))
-				{
-					try
-					{
-						const std::vector<uint8_t> raw = served->GetData();
-						merged = nlohmann::json::parse(
-							std::string(reinterpret_cast<const char*>(raw.data()), raw.size()),
-							nullptr, true, true);
-					}
-					catch (const std::exception&)
-					{
-					}
-				}
-			}
-			if (merged.is_null())
-				continue;
-		}
-
-		std::vector<uint8_t> mergedVec;
-		{
-			const std::string serialized = merged.dump();
-			mergedVec.assign(serialized.begin(), serialized.end());
-		}
-		if (!TryAugmentBuildingsBytes(mergedVec, towerFlags))
-			continue;
-
-		server->InvalidateCachedPath(entryPath);
-		server->CacheServedAsset(entryPath, std::make_shared<Asset>(fs::path(entryPath), mergedVec));
-		Print(LogLevel::INFO,
-			"TowerInfo: refreshed merged '%s' with custom tower SubItems", entryPath);
-	}
 }

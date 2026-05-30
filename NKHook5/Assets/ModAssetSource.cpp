@@ -33,8 +33,8 @@ bool ModAssetSource::Has(fs::path assetPath)
 	if (primary.rfind("Assets/JSON/", 0) == 0)
 	{
 		const std::string jsonRel = primary.substr(strlen("Assets/JSON/"));
-		return this->modArch->HasEntry(std::string("Mod/JSON/") + jsonRel)
-			|| this->modArch->HasEntry(jsonRel);
+		return this->modArch->HasEntry(jsonRel)
+			|| this->modArch->HasEntry(std::string("Mod/JSON/") + jsonRel);
 	}
 	return false;
 }
@@ -46,9 +46,9 @@ std::shared_ptr<Asset> ModAssetSource::Find(fs::path assetPath)
 	if (entryData.empty() && primary.rfind("Assets/JSON/", 0) == 0)
 	{
 		const std::string jsonRel = primary.substr(strlen("Assets/JSON/"));
-		entryData = this->modArch->ReadEntry(std::string("Mod/JSON/") + jsonRel);
+		entryData = this->modArch->ReadEntry(jsonRel);
 		if (entryData.empty())
-			entryData = this->modArch->ReadEntry(jsonRel);
+			entryData = this->modArch->ReadEntry(std::string("Mod/JSON/") + jsonRel);
 	}
 
 	if (entryData.empty())

@@ -1,20 +1,13 @@
 #include "LoadFrom.h"
 
 #include "../../Assets/AssetServer.h"
-#include "../../Extensions/LabDefinitions/LabDefinitionsExt.h"
-#include "../../Extensions/SpecialtyDefinitions/SpecialtyDefinitionsExt.h"
-#include "../../Extensions/TowerInfo/TowerInfoExt.h"
 #include "../RuntimeHooks.h"
-#include "../../Util/FlagManager.h"
 
 #include <Extensions/ExtensionManager.h>
-#include <nlohmann/json.hpp>
 #include <Files/File.h>
 #include <Logging/Logger.h>
 
 #include <filesystem>
-
-extern NKHook5::Util::FlagManager g_towerFlags;
 
 namespace NKHook5::Patches::CZipFile
 {
@@ -23,9 +16,6 @@ namespace NKHook5::Patches::CZipFile
 	using namespace Common::Logging;
 	using namespace Common::Logging::Logger;
 	using namespace NKHook5;
-	using namespace NKHook5::Extensions::LabDefinitions;
-	using namespace NKHook5::Extensions::SpecialtyDefinitions;
-	using namespace NKHook5::Extensions::TowerInfo;
 	using namespace NKHook5::Patches::RuntimeHooks;
 	using namespace NKHook5::Signatures;
 	using namespace NKHook5::Assets;
@@ -88,58 +78,6 @@ namespace NKHook5::Patches::CZipFile
 		std::vector<uint8_t> extensionData = vanillaData;
 		if (servedAsset != nullptr)
 			extensionData = servedAsset->GetData();
-
-		const bool isMainMenuBuildingsJson =
-			assetPathStr.rfind("Assets/JSON/ScreenDefinitions/MainMenu/Buildings", 0) == 0 &&
-			(assetPathStr.ends_with("Buildings.json") || assetPathStr.ends_with("BuildingsNoSocial.json"));
-		if (isMainMenuBuildingsJson && !extensionData.empty())
-			TowerInfoExt::TryAugmentBuildingsBytes(extensionData, g_towerFlags);
-
-		const bool isLabShopJson =
-			assetPathStr == "Assets/JSON/ScreenDefinitions/MainMenu/LabShop.json";
-		if (isLabShopJson && !extensionData.empty())
-		{
-			try
-			{
-				nlohmann::json labShop = nlohmann::json::parse(
-					std::string(reinterpret_cast<const char*>(extensionData.data()), extensionData.size()),
-					nullptr, true, true);
-				if (auto* labExt = ExtensionManager::Get<LabDefinitionsExt>())
-				{
-					if (labExt->AugmentLabShopJson(labShop))
-					{
-						const std::string patched = labShop.dump();
-						extensionData.assign(patched.begin(), patched.end());
-					}
-				}
-			}
-			catch (const std::exception&)
-			{
-			}
-		}
-
-		const bool isSpecialtyShopJson =
-			assetPathStr == "Assets/JSON/ScreenDefinitions/MainMenu/SpecialtyShop.json";
-		if (isSpecialtyShopJson && !extensionData.empty())
-		{
-			try
-			{
-				nlohmann::json specialtyShop = nlohmann::json::parse(
-					std::string(reinterpret_cast<const char*>(extensionData.data()), extensionData.size()),
-					nullptr, true, true);
-				if (auto* specExt = ExtensionManager::Get<SpecialtyDefinitionsExt>())
-				{
-					if (specExt->AugmentSpecialtyShopJson(specialtyShop))
-					{
-						const std::string patched = specialtyShop.dump();
-						extensionData.assign(patched.begin(), patched.end());
-					}
-				}
-			}
-			catch (const std::exception&)
-			{
-			}
-		}
 
 		if (!extensionData.empty()) {
 			for (Extension* ext : extsForFile) {

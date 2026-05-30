@@ -4,7 +4,6 @@
 #include <vector>
 #include <string>
 #include <cstddef>
-#include <map>
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 
@@ -28,14 +27,8 @@ namespace NKHook5::Extensions::LabDefinitions
         {
         private:
                 std::vector<LabDefinition> definitions;
-                std::map<std::string, size_t> nameToIndex;
-                std::map<int, size_t> labTypeToIndex;
-
-                // Order from Assets/JSON/ScreenDefinitions/MainMenu/LabShop.json (BTD5.jet).
-                std::vector<std::string> labShopOrder;
-                std::unordered_map<std::string, int> labTypeByShopType;
-                size_t labShopRecordIndex = 0;
-                bool modLabTypesApplied = false;
+                std::unordered_map<std::string, size_t> nameToIndex;
+                std::unordered_map<int, size_t> labTypeToIndex;
                 bool runtimePreloaded = false;
 
                 static bool ShouldSkipJson(const nlohmann::json& content);
@@ -46,10 +39,7 @@ namespace NKHook5::Extensions::LabDefinitions
                 
                 void UseJsonData(nlohmann::json content) override;
                 void PreloadRuntime();
-                void LoadLabShopOrder();
                 bool IsRuntimePreloaded() const { return runtimePreloaded; }
-                void RecordLabShopQuery(int labType, int vanillaMaxLevel);
-                void ApplyModLabTypeBindings();
                 
                 const std::vector<LabDefinition>& GetDefinitions() const;
                 const LabDefinition* GetDefinition(const std::string& name) const;
@@ -58,6 +48,5 @@ namespace NKHook5::Extensions::LabDefinitions
                 int GetMaxLevel(int labType) const;
                 int GetFallbackMaxLevel(int vanillaMaxLevel, int labType) const;
 
-                bool AugmentLabShopJson(nlohmann::json& root) const;
         };
 }

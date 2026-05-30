@@ -3,19 +3,15 @@
 #include "../Extensions/LabDefinitions/LabDefinitionsExt.h"
 #include "../Extensions/SpecialtyDefinitions/SpecialtyDefinitionsExt.h"
 #include "../Extensions/TowerInfo/TowerInfoExt.h"
-#include "../Util/FlagManager.h"
 
 #include <Extensions/ExtensionManager.h>
 #include <Logging/Logger.h>
-
-extern NKHook5::Util::FlagManager g_towerFlags;
 
 namespace NKHook5::Patches::RuntimeHooks
 {
 	using namespace Common::Extensions;
 	using namespace Common::Logging::Logger;
 	using namespace NKHook5::Extensions;
-	using namespace NKHook5::Util;
 	using namespace NKHook5::Extensions::LabDefinitions;
 	using namespace NKHook5::Extensions::SpecialtyDefinitions;
 	using namespace NKHook5::Extensions::TowerInfo;
@@ -57,7 +53,6 @@ namespace NKHook5::Patches::RuntimeHooks
 		if (auto* towerInfoExt = ExtensionManager::Get<TowerInfoExt>())
 		{
 			towerInfoExt->PreloadRuntime();
-			towerInfoExt->RefreshBuildingsScreenEntries(g_towerFlags);
 		}
 	}
 

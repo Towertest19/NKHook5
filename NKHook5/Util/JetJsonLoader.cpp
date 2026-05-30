@@ -1,10 +1,7 @@
 #include "JetJsonLoader.h"
 
-
-
 #include "../Assets/AssetServer.h"
-
-
+#include "AssetPathUtil.h"
 
 #include <Extensions/ExtensionManager.h>
 
@@ -18,7 +15,6 @@
 
 #include <Util/ExtensionGlob.h>
 
-#include <algorithm>
 #include <cstring>
 #include <filesystem>
 
@@ -61,28 +57,6 @@ namespace NKHook5::Util
 
 
 
-		std::string NormalizeAssetJsonPath(const std::string& entry)
-		{
-			static constexpr const char* kModPrefix = "Mod/JSON/";
-			if (entry.rfind(kModPrefix, 0) == 0)
-				return std::string("Assets/JSON/") + entry.substr(strlen(kModPrefix));
-			static constexpr const char* kJsonRoots[] = {
-				"ScreenDefinitions/",
-				"LabDefinitions/",
-				"SpecialtyDefinitions/",
-				"TowerDefinitions/",
-				"StatusDefinitions/",
-				"WeaponDefinitions/",
-				"BloonDefinitions/",
-			};
-			for (const char* jsonRoot : kJsonRoots)
-			{
-				if (entry.rfind(jsonRoot, 0) == 0)
-					return std::string("Assets/JSON/") + entry;
-			}
-			return entry;
-		}
-
 		void CollectFromArchive(const ZipBase& zip, const std::string& pathPrefix,
 
 			const std::string& extensionSuffix, std::vector<std::string>& paths,
@@ -95,7 +69,7 @@ namespace NKHook5::Util
 
 			{
 
-				const std::string normalized = NormalizeAssetJsonPath(entry);
+				const std::string normalized = ToDefinitionAssetPath(entry);
 
 				if (normalized.rfind(pathPrefix, 0) != 0)
 
@@ -137,7 +111,7 @@ namespace NKHook5::Util
 
 		zip.SetPassword("Q%_{6#Px]]");
 
-		out = zip.ReadEntry(entryPath);
+		out = zip.ReadEntry(ToDefinitionAssetPath(entryPath));
 
 		zip.Close();
 
@@ -150,10 +124,11 @@ namespace NKHook5::Util
 	bool ReadMergedJsonEntry(const std::string& entryPath, nlohmann::json& out)
 
 	{
+		const std::string normalizedEntryPath = ToDefinitionAssetPath(entryPath);
 
 		std::vector<uint8_t> vanilla;
 
-		ReadVanillaJetBytes(entryPath, vanilla);
+		ReadVanillaJetBytes(normalizedEntryPath, vanilla);
 
 
 
@@ -163,7 +138,7 @@ namespace NKHook5::Util
 
 		{
 
-			if (auto served = server->ServeJSON(entryPath, vanilla))
+			if (auto served = server->ServeJSON(normalizedEntryPath, vanilla))
 
 				merged = served->GetData();
 
@@ -370,4 +345,3 @@ namespace NKHook5::Util
 	}
 
 }
-

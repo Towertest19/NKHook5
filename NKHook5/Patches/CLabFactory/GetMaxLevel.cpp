@@ -61,16 +61,10 @@ namespace NKHook5::Patches::CLabFactory
 
 		TryBindLabTypes(thisptr, labExt, specExt);
 
-		if (labExt)
-			labExt->RecordLabShopQuery(labType, vanillaMax);
-		if (specExt)
-			specExt->RecordSpecialtyShopQuery(labType, vanillaMax);
-
 		const bool specialtyQuery = IsSpecialtyVanillaCap(vanillaMax);
 		const bool monkeyLabQuery = IsMonkeyLabVanillaCap(vanillaMax);
 
-		// Scope overrides by the vanilla cap the game uses for each screen:
-		// monkey labs (LabShop / LabDefinitions) vs specialties (SpecialtyShop).
+		// Scope overrides by the vanilla cap the game uses for each definition type.
 		if (specialtyQuery && specExt)
 		{
 			const int dynMax = specExt->GetMaxLevel(labType);

@@ -1,5 +1,6 @@
 #include "AssetServer.h"
 #include "ModAssetSource.h"
+#include "../Util/AssetPathUtil.h"
 
 #include <Extensions/Generic/MergeIgnoreExtension.h>
 #include <Extensions/ExtensionManager.h>
@@ -7,8 +8,6 @@
 #include <Util/Json/MergedDocument.h>
 #include <Util/Xml/ReflectedDocument.h>
 
-#include <algorithm>
-#include <cstring>
 #include <unordered_set>
 
 #include <rapidxml.hpp>
@@ -24,6 +23,7 @@ using namespace Common::Util::Json;
 using namespace Common::Util::Xml;
 using namespace NKHook5;
 using namespace NKHook5::Assets;
+using namespace NKHook5::Util;
 namespace fs = std::filesystem;
 
 static AssetServer* server = nullptr;
@@ -233,30 +233,7 @@ std::vector<std::string> AssetServer::CollectEntryPaths(const std::string& pathP
 	std::unordered_set<std::string> seen;
 
 	auto appendPath = [&](const std::string& rawPath) {
-		std::string path = rawPath;
-		std::replace(path.begin(), path.end(), '\\', '/');
-		if (path.rfind("Mod/JSON/", 0) == 0)
-			path = "Assets/JSON/" + path.substr(strlen("Mod/JSON/"));
-		else if (path.rfind(pathPrefix, 0) != 0)
-		{
-			static constexpr const char* kJsonRoots[] = {
-				"ScreenDefinitions/",
-				"LabDefinitions/",
-				"SpecialtyDefinitions/",
-				"TowerDefinitions/",
-				"StatusDefinitions/",
-				"WeaponDefinitions/",
-				"BloonDefinitions/",
-			};
-			for (const char* jsonRoot : kJsonRoots)
-			{
-				if (path.rfind(jsonRoot, 0) == 0)
-				{
-					path = "Assets/JSON/" + path;
-					break;
-				}
-			}
-		}
+		std::string path = ToDefinitionAssetPath(rawPath);
 		if (path.rfind(pathPrefix, 0) != 0)
 			return;
 		if (!extensionSuffix.empty() && path.size() >= extensionSuffix.size()) {

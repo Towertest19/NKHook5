@@ -2,12 +2,9 @@
 
 #include <Extensions/JsonExtension.h>
 #include <nlohmann/json.hpp>
-#include <array>
 #include <string>
 #include <unordered_map>
-#include <utility>
 #include <vector>
-#include <cstdint>
 
 #include <cstddef>
 
@@ -34,11 +31,6 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 		std::unordered_map<std::string, size_t> nameToIndex;
 		std::unordered_map<int, size_t>         labTypeToIndex;
 
-		std::vector<std::string> specialtyShopOrder;
-		std::unordered_map<std::string, std::string> specialtyShopTypeAliases;
-		std::unordered_map<std::string, int> buildingToLabType;
-		size_t specialtyRecordIndex = 0;
-		bool modSpecialtyTypesApplied = false;
 		bool runtimePreloaded = false;
 
 		static int CountTiers(const nlohmann::json& effects, bool clampToRuntimeMax = true);
@@ -50,11 +42,7 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 
 		void UseJsonData(nlohmann::json content) override;
 		void PreloadRuntime();
-		void LoadSpecialtyShopOrder();
 		bool IsRuntimePreloaded() const { return runtimePreloaded; }
-
-		void RecordSpecialtyShopQuery(int labType, int vanillaMaxLevel);
-		void ApplyModSpecialtyBindings();
 
 		int GetMaxLevel(int labType) const;
 		int GetFallbackMaxLevel(int vanillaMaxLevel, int labType) const;
@@ -63,7 +51,5 @@ namespace NKHook5::Extensions::SpecialtyDefinitions
 		const SpecialtyDefinition* GetDefinition(int labType) const;
 		const SpecialtyDefinition* GetDefinition(const std::string& name) const;
 		const std::vector<SpecialtyDefinition>& GetDefinitions() const;
-
-		bool AugmentSpecialtyShopJson(nlohmann::json& root) const;
 	};
 }
