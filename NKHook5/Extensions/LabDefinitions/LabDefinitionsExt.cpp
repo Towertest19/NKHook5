@@ -120,7 +120,7 @@ void LabDefinitionsExt::UseJsonData(nlohmann::json content)
                         def.maxLevel = std::max(def.maxLevel, content["MaxLevel"].get<int>());
 
                 const size_t idx = UpsertDefinition(std::move(def));
-                Print(LogLevel::INFO,
+                Print(LogLevel::DEBUG,
                         "LabDefinitions: '%s' maxLevel=%d (labType=%d)",
                         definitions[idx].name.c_str(),
                         definitions[idx].maxLevel,
@@ -137,11 +137,11 @@ void LabDefinitionsExt::PreloadRuntime()
         if (runtimePreloaded)
                 return;
 
-        Print(LogLevel::INFO, "LabDefinitions: priming runtime state without scanning Assets/JSON/LabDefinitions.");
+        Print(LogLevel::DEBUG, "LabDefinitions: priming runtime state without scanning Assets/JSON/LabDefinitions.");
 
         runtimePreloaded = true;
 
-        Print(LogLevel::INFO,
+        Print(LogLevel::DEBUG,
                 "LabDefinitions: %zu definition(s) ready after runtime preload",
                 definitions.size());
 }
@@ -196,4 +196,15 @@ int LabDefinitionsExt::GetFallbackMaxLevel(int vanillaMaxLevel, int labType) con
         }
 
         return -1;
+}
+
+int LabDefinitionsExt::GetHighestDefinedMaxLevel() const
+{
+        int maxLevel = -1;
+        for (const auto& def : definitions)
+        {
+                if (def.maxLevel > maxLevel)
+                        maxLevel = def.maxLevel;
+        }
+        return maxLevel;
 }

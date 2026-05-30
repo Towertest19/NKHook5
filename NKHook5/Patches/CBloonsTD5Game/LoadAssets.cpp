@@ -29,8 +29,8 @@ namespace NKHook5
             static uint64_t o_func;
 
             static void __fastcall cb_hook(Classes::CBloonsTD5Game* gameInstance) {
-                Print(LogLevel::INFO, "Loading custom assets...");
-                Print(LogLevel::INFO, "CWD: %s", std::filesystem::current_path().string().c_str());
+                Print(LogLevel::DEBUG, "Loading custom assets...");
+                Print(LogLevel::DEBUG, "CWD: %s", std::filesystem::current_path().string().c_str());
                 nfw::string archivePath = "./Assets/BTD5.jet";
                 auto assetsArchive = std::make_unique<Classes::CZipFile>();
                 assetsArchive->Open(archivePath);
@@ -72,10 +72,10 @@ namespace NKHook5
                     Print(LogLevel::WARNING, "StatusDefinitions preload skipped: extension(s) unavailable");
                 }
 
-                Print(LogLevel::INFO,
+                Print(LogLevel::DEBUG,
                     "Lab/Specialty definitions load via CZipFile::LoadFrom merged assets (.nkh + jet)");
 
-                Print(LogLevel::INFO, "Custom assets loaded!");
+                Print(LogLevel::DEBUG, "Custom assets loaded!");
 
                 Print(LogLevel::INFO, "BTD5 began loading assets...");
                 ((void(__thiscall*)(void*))o_func)(gameInstance);

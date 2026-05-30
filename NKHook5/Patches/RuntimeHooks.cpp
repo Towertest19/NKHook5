@@ -29,7 +29,7 @@ namespace NKHook5::Patches::RuntimeHooks
 			return;
 		g_labSpecialtyPrimed = true;
 
-		Print(LogLevel::INFO,
+		Print(LogLevel::DEBUG,
 			"RuntimeHooks: mods registered; priming lab/specialty metadata from merged NKH.");
 
 		if (auto* labExt = ExtensionManager::Get<LabDefinitionsExt>())
@@ -44,7 +44,7 @@ namespace NKHook5::Patches::RuntimeHooks
 			return;
 
 		g_towerTypesReady = true;
-		Print(LogLevel::INFO, "RuntimeHooks: tower types ready; priming towerinfo from merged NKH.");
+		Print(LogLevel::DEBUG, "RuntimeHooks: tower types ready; priming towerinfo from merged NKH.");
 
 		if (g_towerInfoPrimed)
 			return;

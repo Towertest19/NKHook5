@@ -225,7 +225,7 @@ namespace NKHook5::Util
 		}
 
 		std::sort(paths.begin(), paths.end());
-		Print(LogLevel::INFO, "JetJsonLoader: discovered %zu path(s) under '%s' (*%s)",
+		Print(LogLevel::DEBUG, "JetJsonLoader: discovered %zu path(s) under '%s' (*%s)",
 			paths.size(), pathPrefix.c_str(), extensionSuffix.c_str());
 		return paths;
 	}
@@ -338,7 +338,7 @@ namespace NKHook5::Util
 			++loaded;
 		}
 
-		Print(LogLevel::INFO,
+		Print(LogLevel::DEBUG,
 			"%s: preloaded %d merged asset(s) matching '%s' (from %zu candidates)",
 			ext.GetName().c_str(), loaded, target.c_str(), entries.size());
 

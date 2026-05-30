@@ -158,6 +158,7 @@ namespace NKHook5::Signatures {
 		MonkeyLabScreen_CCTOR,
 		/* SpecialtiesScreen */
 		SpecialtiesScreen_CCTOR,
+		SpecialtiesScreen_TierSwitch,
 		/* TowerInfoScreen */
 		TowerInfoScreen_SetTower,
 		/* ScriptedScreen */

@@ -121,7 +121,7 @@ void TowerInfoExt::UseJsonData(nlohmann::json content)
 		nameToIndex[def.towerType] = definitions.size();
 		definitions.emplace_back(std::move(def));
 
-		Print(LogLevel::INFO, "Loaded TowerDefinition: '%s' (CanBeViewed=%s%s, CanBeUnlocked=%s)",
+		Print(LogLevel::DEBUG, "Loaded TowerDefinition: '%s' (CanBeViewed=%s%s, CanBeUnlocked=%s)",
 			definitions.back().towerType.c_str(),
 			definitions.back().canBeViewed ? "true" : "false",
 			definitions.back().canBeViewedSpecified ? "" : "/unspecified",
@@ -163,14 +163,14 @@ void TowerInfoExt::PreloadRuntime()
 	if (runtimePreloaded)
 		return;
 
-	Print(LogLevel::INFO, "Hijacking tower info runtime to preload merged .nkh/.jet metadata...");
-	Print(LogLevel::INFO, "Copying vanilla tower info definitions...");
+	Print(LogLevel::DEBUG, "Hijacking tower info runtime to preload merged .nkh/.jet metadata...");
+	Print(LogLevel::DEBUG, "Copying vanilla tower info definitions...");
 	PreloadJsonExtension(*this);
 	firstCustomDefinitionIndex = definitions.size();
-	Print(LogLevel::INFO, "Old tower info definitions copied; mod tower metadata will bind from tower flags.");
+	Print(LogLevel::DEBUG, "Old tower info definitions copied; mod tower metadata will bind from tower flags.");
 
 	firstCustomDefinitionIndex = std::min(firstCustomDefinitionIndex, definitions.size());
-	Print(LogLevel::INFO,
+	Print(LogLevel::DEBUG,
 		"TowerInfo: %zu definitions ready after runtime preload", definitions.size());
 
 	runtimePreloaded = true;
@@ -178,8 +178,12 @@ void TowerInfoExt::PreloadRuntime()
 
 void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags)
 {
-	Print(LogLevel::INFO, "Hijacking tower info runtime to resolve custom tower unlocks/overviews...");
 	PreloadRuntime();
+	const auto& allTowerFlags = towerFlags.GetAll();
+	const size_t currentFlagCount = allTowerFlags.size();
+	if (registrationFinalized && finalizedFlagCount == currentFlagCount && finalizedDefinitionCount == definitions.size())
+		return;
+	Print(LogLevel::DEBUG, "Hijacking tower info runtime to resolve custom tower unlocks/overviews...");
 	idToIndex.clear();
 	for (size_t i = firstCustomDefinitionIndex; i < definitions.size(); ++i)
 	{
@@ -192,15 +196,15 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 			if (!IsCustomTowerInfoTower(def.towerId))
 				continue;
 			idToIndex[def.towerId] = i;
-			Print(LogLevel::INFO, "TowerInfo: registered '%s' as tower ID %llu", def.towerType.c_str(), def.towerId);
+			Print(LogLevel::DEBUG, "TowerInfo: registered '%s' as tower ID %llu", def.towerType.c_str(), def.towerId);
 		}
 		else
 		{
-			Print(LogLevel::WARNING, "TowerInfo: tower '%s' has no registered tower ID yet", def.towerType.c_str());
+			Print(LogLevel::DEBUG, "TowerInfo: tower '%s' has no registered tower ID yet", def.towerType.c_str());
 		}
 	}
 
-	for (const auto& [towerId, towerName] : towerFlags.GetAll())
+	for (const auto& [towerId, towerName] : allTowerFlags)
 	{
 		if (towerName.empty() || towerName == "INVALID")
 			continue;
@@ -216,7 +220,7 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 		{
 			definitions[existing->second].towerId = towerId;
 			idToIndex[towerId] = existing->second;
-			Print(LogLevel::INFO, "TowerInfo: registered '%s' as tower ID %llu", towerName.c_str(), towerId);
+			Print(LogLevel::DEBUG, "TowerInfo: registered '%s' as tower ID %llu", towerName.c_str(), towerId);
 			continue;
 		}
 
@@ -229,11 +233,67 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 		nameToIndex[towerName] = idx;
 		idToIndex[towerId] = idx;
 		definitions.push_back(std::move(def));
-		Print(LogLevel::INFO, "TowerInfo: registered tower flag '%s' as tower ID %llu", towerName.c_str(), towerId);
+		Print(LogLevel::DEBUG, "TowerInfo: registered tower flag '%s' as tower ID %llu", towerName.c_str(), towerId);
 	}
+	registrationFinalized = true;
+	finalizedFlagCount = currentFlagCount;
+	finalizedDefinitionCount = definitions.size();
 
 }
 
+
+
+std::vector<TowerInfoDefinition> TowerInfoExt::GetRuntimeOrderedDefinitions() const
+{
+	std::vector<TowerInfoDefinition> ordered;
+	std::unordered_set<std::string> seen;
+
+	static constexpr uint64_t kVanillaOrder[] = {
+		1ull << 2ull,
+		1ull << 23ull,
+		1ull << 24ull,
+		1ull << 22ull,
+		1ull << 3ull,
+		1ull << 4ull,
+		1ull << 5ull,
+		1ull << 6ull,
+		1ull << 7ull,
+		1ull << 8ull,
+		1ull << 9ull,
+		1ull << 10ull,
+		1ull << 11ull,
+		1ull << 12ull,
+		1ull << 13ull,
+		1ull << 14ull,
+		1ull << 15ull,
+		1ull << 16ull,
+		1ull << 17ull,
+		1ull << 18ull,
+		1ull << 19ull,
+	};
+
+	for (const uint64_t towerId : kVanillaOrder)
+	{
+		if (const TowerInfoDefinition* def = GetDefinition(towerId))
+		{
+			if (ShouldDisplayInInfoPanel(def->towerId, def->towerType, false) && seen.insert(def->towerType).second)
+				ordered.push_back(*def);
+		}
+	}
+
+	for (const auto& def : definitions)
+	{
+		if (def.towerId == 0 || seen.contains(def.towerType))
+			continue;
+		if (ShouldDisplayInInfoPanel(def.towerId, def.towerType, IsCustomTowerInfoTower(def.towerId)))
+		{
+			seen.insert(def.towerType);
+			ordered.push_back(def);
+		}
+	}
+
+	return ordered;
+}
 
 bool TowerInfoExt::BindDefinitionId(const std::string& towerType, uint64_t towerId)
 {
@@ -250,7 +310,7 @@ bool TowerInfoExt::BindDefinitionId(const std::string& towerType, uint64_t tower
 	if (def.towerId != towerId)
 	{
 		def.towerId = towerId;
-		Print(LogLevel::INFO, "TowerInfo: late-bound '%s' to tower ID %llu", towerType.c_str(), towerId);
+		Print(LogLevel::DEBUG, "TowerInfo: late-bound '%s' to tower ID %llu", towerType.c_str(), towerId);
 	}
 	idToIndex[towerId] = it->second;
 	return true;

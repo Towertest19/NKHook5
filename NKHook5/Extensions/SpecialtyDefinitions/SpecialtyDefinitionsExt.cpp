@@ -45,8 +45,6 @@ namespace
                         if (key == tierKey)
                                 return tierIdx;
                 }
-                if (key == "X")
-                        return 10;
                 return 0;
         }
 }
@@ -149,12 +147,13 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
                 if (content.contains("Building"))
                         def.building = content["Building"].get<std::string>();
 
-                def.labType = content.value("LabType", -1);
+                if (content.contains("LabType") && content["LabType"].is_number_integer())
+                        def.labType = content["LabType"].get<int>();
 
                 if (content.contains("Effects") && content["Effects"].is_object())
                 {
                         const auto& effects = content["Effects"];
-                        def.maxLevel = CountTiers(effects);
+                        def.maxLevel = CountTiers(effects, true);
 
                         for (const auto& [key, tierIdx] : kTierOrder)
                         {
@@ -180,7 +179,7 @@ void SpecialtyDefinitionsExt::UseJsonData(nlohmann::json content)
                 }
                 if (tierSummary.empty()) tierSummary = "(none)";
 
-                Print(LogLevel::INFO,
+                Print(LogLevel::DEBUG,
                         "SpecialtyDefinitions: '%s' maxLevel=%d tiers=[%s] (labType=%d)",
                         definitions[idx].name.c_str(),
                         definitions[idx].maxLevel,
@@ -198,11 +197,11 @@ void SpecialtyDefinitionsExt::PreloadRuntime()
         if (runtimePreloaded)
                 return;
 
-        Print(LogLevel::INFO, "SpecialtyDefinitions: priming runtime state without scanning Assets/JSON/SpecialtyDefinitions.");
+        Print(LogLevel::DEBUG, "SpecialtyDefinitions: priming runtime state without scanning Assets/JSON/SpecialtyDefinitions.");
 
         runtimePreloaded = true;
 
-        Print(LogLevel::INFO,
+        Print(LogLevel::DEBUG,
                 "SpecialtyDefinitions: %zu definition(s) ready after runtime preload",
                 definitions.size());
 }
@@ -215,17 +214,10 @@ int SpecialtyDefinitionsExt::GetMaxLevel(int labType) const
         return -1;
 }
 
-int SpecialtyDefinitionsExt::GetFallbackMaxLevel(int vanillaMaxLevel, int labType) const
+int SpecialtyDefinitionsExt::GetFallbackMaxLevel(int vanillaMaxLevel, int /*labType*/) const
 {
         if (!IsSpecialtyVanillaCap(vanillaMaxLevel))
                 return -1;
-
-        const auto bound = labTypeToIndex.find(labType);
-        if (bound != labTypeToIndex.end())
-        {
-                const int jsonMax = definitions[bound->second].maxLevel;
-                return jsonMax > vanillaMaxLevel ? jsonMax : -1;
-        }
 
         return -1;
 }
