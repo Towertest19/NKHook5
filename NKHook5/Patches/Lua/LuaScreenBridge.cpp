@@ -134,7 +134,7 @@ namespace NKHook5::Patches::Lua
         int LuaScreenIs(lua_State* L)
         {
             auto* screen = GetScreenArg(L, 1);
-            const char* wanted = lua_tostring_ptr ? lua_tostring_ptr(L, 2, nullptr) : nullptr;
+            const char* wanted = lua_tolstring_ptr ? lua_tolstring_ptr(L, 2, nullptr) : nullptr;
             const std::string name = ReadScreenName(screen);
             lua_pushboolean_ptr(L, wanted && name == wanted ? 1 : 0);
             return 1;
@@ -155,7 +155,7 @@ namespace NKHook5::Patches::Lua
 
         int LuaGetScreen(lua_State* L)
         {
-            const char* name = lua_tostring_ptr ? lua_tostring_ptr(L, 1, nullptr) : nullptr;
+            const char* name = lua_tolstring_ptr ? lua_tolstring_ptr(L, 1, nullptr) : nullptr;
             if (!name)
             {
                 lua_pushlightuserdata_ptr(L, nullptr);
@@ -193,7 +193,7 @@ namespace NKHook5::Patches::Lua
 
         int LuaSetLabCategory(lua_State* L)
         {
-            const char* category = lua_tostring_ptr ? lua_tostring_ptr(L, 1, nullptr) : nullptr;
+            const char* category = lua_tolstring_ptr ? lua_tolstring_ptr(L, 1, nullptr) : nullptr;
             Print(LogLevel::DEBUG, "Lua ui.set_lab_category('%s') requested", category ? category : "");
             lua_pushboolean_ptr(L, 1);
             return 1;
@@ -248,7 +248,7 @@ namespace NKHook5::Patches::Lua
             lua_setglobal_ptr = reinterpret_cast<lua_setglobal_fn>(GetProcAddress(lua, "lua_setglobal"));
             lua_type_ptr = reinterpret_cast<lua_type_fn>(GetProcAddress(lua, "lua_type"));
             lua_touserdata_ptr = reinterpret_cast<lua_touserdata_fn>(GetProcAddress(lua, "lua_touserdata"));
-            lua_tostring_ptr = reinterpret_cast<lua_tolstring_fn>(GetProcAddress(lua, "lua_tolstring"));
+            lua_tolstring_ptr = reinterpret_cast<lua_tolstring_fn>(GetProcAddress(lua, "lua_tolstring"));
             lua_settop_ptr = reinterpret_cast<lua_settop_fn>(GetProcAddress(lua, "lua_settop"));
             lua_pcallk_ptr = reinterpret_cast<lua_pcallk_fn>(GetProcAddress(lua, "lua_pcallk"));
 
@@ -256,7 +256,7 @@ namespace NKHook5::Patches::Lua
                 lua_pushstring_ptr && lua_pushboolean_ptr && lua_createtable_ptr &&
                 lua_setfield_ptr && lua_getfield_ptr && lua_getglobal_ptr && lua_setglobal_ptr &&
                 lua_type_ptr && lua_touserdata_ptr &&
-                lua_tostring_ptr && lua_settop_ptr && lua_pcallk_ptr;
+                lua_tolstring_ptr && lua_settop_ptr && lua_pcallk_ptr;
         }
 
         bool EnsureBridgeInstalled(lua_State* L)
@@ -326,7 +326,7 @@ namespace NKHook5::Patches::Lua
             PushScreenObject(L, screen);
             if (lua_pcallk_ptr(L, 1, 0, 0, 0, nullptr) != 0)
             {
-                const char* err = lua_tostring_ptr(L, -1, nullptr);
+                const char* err = lua_tolstring_ptr(L, -1, nullptr);
                 Print(LogLevel::ERR, "Lua screen callback %s failed: %s", callback, err ? err : "unknown error");
                 lua_pop(L, 1);
             }
