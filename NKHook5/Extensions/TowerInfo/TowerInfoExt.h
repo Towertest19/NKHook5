@@ -59,6 +59,8 @@ namespace NKHook5
 				virtual bool CanUnlockTower(const std::string& towerType) const;
 				virtual bool CanUnlockTower(uint64_t towerId, const std::string& towerType) const;
 
+				static bool IsVanillaTowerInfoTower(uint64_t towerId, const std::string& towerType);
+				static bool IsCustomTowerInfoTower(uint64_t towerId);
 				static bool AugmentBuildingsJson(nlohmann::json& buildings, const Util::FlagManager& towerFlags);
 				static bool TryAugmentBuildingsBytes(std::vector<uint8_t>& data, const Util::FlagManager& towerFlags);
 				void RefreshBuildingsScreenEntries(const Util::FlagManager& towerFlags);

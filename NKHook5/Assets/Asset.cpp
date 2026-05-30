@@ -1,10 +1,23 @@
 #include "Asset.h"
 
+#include <algorithm>
+
 using namespace NKHook5;
 using namespace NKHook5::Assets;
 
+namespace
+{
+	fs::path NormalizeAssetPath(fs::path assetPath)
+	{
+		std::string normalized = assetPath.string();
+		std::replace(normalized.begin(), normalized.end(), '\\', '/');
+		return fs::path(normalized);
+	}
+}
+
 Asset::Asset(fs::path assetPath)
 {
+	assetPath = NormalizeAssetPath(assetPath);
 	this->assetBin = FromPath(assetPath);
 	this->assetPath = assetPath.string()
 		.substr(sizeof("Assets/"))
@@ -13,6 +26,7 @@ Asset::Asset(fs::path assetPath)
 
 Asset::Asset(fs::path assetPath, std::vector<uint8_t> assetData)
 {
+	assetPath = NormalizeAssetPath(assetPath);
 	this->assetBin = FromPath(assetPath);
 	this->assetPath = assetPath.string()
 		.substr(sizeof("Assets/"))

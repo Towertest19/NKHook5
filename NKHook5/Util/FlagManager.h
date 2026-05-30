@@ -20,7 +20,7 @@ namespace NKHook5::Util {
 		//Registers at next available numeric ID (+1 lookup, skips taken IDs)
 		uint64_t Register(const std::string& text);
 		//Registers at next available bit flag starting from startBit
-		// startBit=20 for bloons (after Dreadbloon), 59 for towers (after GameDummy)
+		// startBit=20 for bloons (after Dreadbloon), 59 for towers (bit 58 is GameDummy)
 		uint64_t RegisterBitFlag(const std::string& text, int startBit = 59);
 		//Slowly check if the id is available
 		bool IsIDAvailable(uint64_t id) const;
