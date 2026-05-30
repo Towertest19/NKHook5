@@ -59,7 +59,7 @@ namespace NKHook5::Patches::SpecialtiesScreen
 		}
 
 		const uintptr_t tablePointer = reinterpret_cast<uintptr_t>(extendedJumpTable);
-		if (tablePointer > std::numeric_limits<uint32_t>::max())
+		if (tablePointer > (std::numeric_limits<uint32_t>::max)())
 		{
 			Print(LogLevel::ERR, "SpecialtiesScreen tier patch: extended tier table is outside 32-bit address space");
 			return false;
