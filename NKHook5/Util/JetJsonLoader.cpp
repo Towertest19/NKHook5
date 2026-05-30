@@ -66,6 +66,20 @@ namespace NKHook5::Util
 			static constexpr const char* kModPrefix = "Mod/JSON/";
 			if (entry.rfind(kModPrefix, 0) == 0)
 				return std::string("Assets/JSON/") + entry.substr(strlen(kModPrefix));
+			static constexpr const char* kJsonRoots[] = {
+				"ScreenDefinitions/",
+				"LabDefinitions/",
+				"SpecialtyDefinitions/",
+				"TowerDefinitions/",
+				"StatusDefinitions/",
+				"WeaponDefinitions/",
+				"BloonDefinitions/",
+			};
+			for (const char* jsonRoot : kJsonRoots)
+			{
+				if (entry.rfind(jsonRoot, 0) == 0)
+					return std::string("Assets/JSON/") + entry;
+			}
 			return entry;
 		}
 
@@ -356,5 +370,4 @@ namespace NKHook5::Util
 	}
 
 }
-
 

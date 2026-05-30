@@ -36,7 +36,7 @@ uint64_t FlagManager::RegisterBitFlag(const std::string& text, int startBit)
 
 	// Bit flag registration - finds next available bit flag starting from startBit
 	// For bloons: should start from bit 20 (after Dreadbloon at bit 19)
-	// For towers: should start from bit 59 (after GameDummy at bit 58)
+	// For towers: should start from bit 59 (bit 58 is GameDummy, an internal vanilla helper)
 	for (int i = startBit; i < 64; i++) {
 		uint64_t flagValue = 1ull << i;
 		if (IsIDAvailable(flagValue)) {

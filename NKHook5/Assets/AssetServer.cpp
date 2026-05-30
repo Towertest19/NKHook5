@@ -237,6 +237,26 @@ std::vector<std::string> AssetServer::CollectEntryPaths(const std::string& pathP
 		std::replace(path.begin(), path.end(), '\\', '/');
 		if (path.rfind("Mod/JSON/", 0) == 0)
 			path = "Assets/JSON/" + path.substr(strlen("Mod/JSON/"));
+		else if (path.rfind(pathPrefix, 0) != 0)
+		{
+			static constexpr const char* kJsonRoots[] = {
+				"ScreenDefinitions/",
+				"LabDefinitions/",
+				"SpecialtyDefinitions/",
+				"TowerDefinitions/",
+				"StatusDefinitions/",
+				"WeaponDefinitions/",
+				"BloonDefinitions/",
+			};
+			for (const char* jsonRoot : kJsonRoots)
+			{
+				if (path.rfind(jsonRoot, 0) == 0)
+				{
+					path = "Assets/JSON/" + path;
+					break;
+				}
+			}
+		}
 		if (path.rfind(pathPrefix, 0) != 0)
 			return;
 		if (!extensionSuffix.empty() && path.size() >= extensionSuffix.size()) {

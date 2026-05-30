@@ -25,6 +25,52 @@ namespace fs = std::filesystem;
 
 namespace
 {
+	bool IsTowerInfoExcludedName(const std::string& towerType)
+	{
+		static const std::unordered_set<std::string> excluded = {
+			"",
+			"INVALID",
+			"TestTower",
+			"RoadSpikes",
+			"ExplodingPineapple",
+			"MeerkatSpyPro",
+			"MeerkatSpy",
+			"TribalTurtlePro",
+			"TribalTurtle",
+			"PortableLakePro",
+			"PortableLake",
+			"PontoonPro",
+			"Pontoon",
+			"BloonsdayDevicePro",
+			"BloonsdayDevice",
+			"AngrySquirrelPro",
+			"AngrySquirrel",
+			"SuperMonkeyStormPro",
+			"SuperMonkeyStorm",
+			"BeeKeeperPro",
+			"BeeKeeper",
+			"BloonberryBushPro",
+			"BloonberryBush",
+			"RadadactylPro",
+			"Radadactyl",
+			"BananaFarmerPro",
+			"BananaFarmer",
+			"WizardLord",
+			"AcePlane",
+			"AircraftCarrier",
+			"PhoenixPlane",
+			"SuperPhoenixPlane",
+			"SupplyDropPlane",
+			"HeliPilotAircraft",
+			"RadadactylPlane",
+			"RadderdactylPlane",
+			"MonkeyEngineerSentry",
+			"MonkeyEngineerSentryTier4",
+			"GameDummy",
+		};
+		return excluded.contains(towerType);
+	}
+
 	bool ReadTowerInfoToggles(const nlohmann::json& json, TowerInfoDefinition& def)
 	{
 		def.canBeViewed = json.value("CanBeViewed", true);
@@ -151,9 +197,9 @@ void TowerInfoExt::FinalizeTowerRegistration(const Util::FlagManager& towerFlags
 	{
 		if (towerName.empty() || towerName == "INVALID")
 			continue;
-		if (Util::FlagManager::IsBaseTower(towerId))
+		if (IsTowerInfoExcludedName(towerName))
 			continue;
-		if (!Util::FlagManager::IsCustomBitFlag(towerId) && !Util::FlagManager::IsCustomFallbackId(towerId))
+		if (!IsCustomTowerInfoTower(towerId))
 			continue;
 		if (idToIndex.find(towerId) != idToIndex.end())
 			continue;
@@ -254,10 +300,13 @@ bool TowerInfoExt::ShouldDisplayInInfoPanel(const std::string& towerType, bool i
 			return def->canBeViewed;
 		}
 
-		return true;
+		if (def->towerId != 0)
+			return IsCustomTowerInfoTower(def->towerId) || IsVanillaTowerInfoTower(def->towerId, towerType);
+
+		return isCustomTower && !IsTowerInfoExcludedName(towerType);
 	}
 
-	return true;
+	return isCustomTower && !IsTowerInfoExcludedName(towerType);
 }
 
 
@@ -265,10 +314,36 @@ bool TowerInfoExt::ShouldDisplayInInfoPanel(uint64_t towerId, const std::string&
 {
 	if (const TowerInfoDefinition* def = GetDefinition(towerId))
 	{
-		return !def->canBeViewedSpecified || def->canBeViewed;
+		if (def->canBeViewedSpecified)
+			return def->canBeViewed;
+		return IsCustomTowerInfoTower(towerId) || IsVanillaTowerInfoTower(towerId, towerType);
 	}
 
+	if (!isCustomTower)
+		return IsVanillaTowerInfoTower(towerId, towerType);
+
 	return ShouldDisplayInInfoPanel(towerType, isCustomTower);
+}
+
+bool TowerInfoExt::IsVanillaTowerInfoTower(uint64_t towerId, const std::string& towerType)
+{
+	if (!Util::FlagManager::IsBitFlag(towerId) || IsTowerInfoExcludedName(towerType))
+		return false;
+
+	if ((towerId >= (1ull << 2ull) && towerId <= (1ull << 19ull)) ||
+		towerId == (1ull << 22ull) ||
+		towerId == (1ull << 23ull) ||
+		towerId == (1ull << 24ull))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool TowerInfoExt::IsCustomTowerInfoTower(uint64_t towerId)
+{
+	return Util::FlagManager::IsCustomBitFlag(towerId) || Util::FlagManager::IsCustomFallbackId(towerId);
 }
 
 bool TowerInfoExt::ShouldHideUpgradeUnlocks(const std::string& towerType) const
@@ -338,7 +413,10 @@ bool TowerInfoExt::AugmentBuildingsJson(nlohmann::json& root, const Util::FlagMa
 			}
 
 			const std::string tower = (*itemIt)["Tower"].get<std::string>();
-			if (tower == "BigRedButton")
+			const uint64_t towerId = towerFlags.GetFlag(tower);
+			if (tower == "BigRedButton" ||
+				IsTowerInfoExcludedName(tower) ||
+				(towerId != 0 && !IsVanillaTowerInfoTower(towerId, tower) && !IsCustomTowerInfoTower(towerId)))
 			{
 				itemIt = subItems.erase(itemIt);
 				changed = true;
@@ -360,9 +438,9 @@ bool TowerInfoExt::AugmentBuildingsJson(nlohmann::json& root, const Util::FlagMa
 		{
 			if (towerName.empty() || towerName == "INVALID")
 				continue;
-			if (Util::FlagManager::IsBaseTower(towerId))
+			if (IsTowerInfoExcludedName(towerName))
 				continue;
-			if (!Util::FlagManager::IsCustomBitFlag(towerId) && !Util::FlagManager::IsCustomFallbackId(towerId))
+			if (!IsCustomTowerInfoTower(towerId))
 				continue;
 			if (!existing.insert(towerName).second)
 				continue;

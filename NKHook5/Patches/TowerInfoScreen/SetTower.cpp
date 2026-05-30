@@ -159,8 +159,8 @@ namespace NKHook5::Patches::TowerInfoScreen
 		}
 
 		if (Util::FlagManager::IsBitFlag(towerId)
-			&& !Util::FlagManager::IsBaseTower(towerId)
-			&& !Util::FlagManager::IsCustomBitFlag(towerId)
+			&& !TowerInfoExt::IsVanillaTowerInfoTower(towerId, towerName)
+			&& !TowerInfoExt::IsCustomTowerInfoTower(towerId)
 			&& !registeredByTowerInfo)
 		{
 			CallSetTower(thisptr, pad, towerId);
