@@ -29,13 +29,28 @@ namespace
 	constexpr int32_t kUpgradePathRight = 1;
 	constexpr int32_t kMaxRuntimeUpgradeTier = 4;
 
-	bool ApplyRuntimeTowerUpgrade(Classes::CTowerFactory* towerFactory, Classes::CBaseTower* tower, int32_t path, int32_t tier)
+	Classes::STowerInfo* GetRuntimeTowerInfo(Classes::CTowerFactory* towerFactory, Classes::CBaseTower* tower)
 	{
 		if (towerFactory == nullptr || tower == nullptr)
+			return nullptr;
+
+		return towerFactory->GetTowerInfo(static_cast<Classes::TowerIDs>(tower->mTypeFlags));
+	}
+
+	int32_t GetRuntimeUpgradeLimit(Classes::STowerInfo* towerInfo, int32_t path)
+	{
+		if (towerInfo == nullptr)
+			return 0;
+
+		return std::clamp(towerInfo->GetUpgradeCount(path), 0, kMaxRuntimeUpgradeTier);
+	}
+
+	bool ApplyRuntimeTowerUpgrade(Classes::CTowerFactory* towerFactory, Classes::STowerInfo* towerInfo, Classes::CBaseTower* tower, int32_t path, int32_t tier)
+	{
+		if (towerFactory == nullptr || towerInfo == nullptr || tower == nullptr)
 			return false;
 
-		auto* towerInfo = towerFactory->GetTowerInfo(static_cast<Classes::TowerIDs>(tower->mTypeFlags));
-		if (towerInfo == nullptr)
+		if (path < 0 || path > 1 || tier < 0 || tier >= GetRuntimeUpgradeLimit(towerInfo, path))
 			return false;
 
 		const int32_t upgradeIndex[2] = { path, tier };
@@ -61,14 +76,15 @@ namespace
 		return pressed || ImGui::IsKeyPressed(ImGuiKey_RightShift, false);
 	}
 
-	bool EditTowerUpgradeCounter(const char* label, Classes::CTowerFactory* towerFactory, Classes::CBaseTower* tower, int32_t path, int32_t& counter)
+	bool EditTowerUpgradeCounter(const char* label, Classes::CTowerFactory* towerFactory, Classes::STowerInfo* towerInfo, Classes::CBaseTower* tower, int32_t path, int32_t& counter)
 	{
 		const int32_t oldCounter = counter;
 		int32_t requestedCounter = counter;
 		if (!ImGui::InputInt(label, &requestedCounter))
 			return false;
 
-		requestedCounter = std::clamp(requestedCounter, 0, kMaxRuntimeUpgradeTier);
+		const int32_t upgradeLimit = GetRuntimeUpgradeLimit(towerInfo, path);
+		requestedCounter = std::clamp(requestedCounter, 0, upgradeLimit);
 		if (requestedCounter <= oldCounter)
 		{
 			counter = requestedCounter;
@@ -79,7 +95,7 @@ namespace
 		bool appliedAnyUpgrade = false;
 		for (int32_t tier = oldCounter; tier < requestedCounter; ++tier)
 		{
-			if (!ApplyRuntimeTowerUpgrade(towerFactory, tower, path, tier))
+			if (!ApplyRuntimeTowerUpgrade(towerFactory, towerInfo, tower, path, tier))
 				break;
 
 			tower->IncrementUpgradePath(path);
@@ -177,8 +193,12 @@ void Editor::Render() {
 						ImGui::Checkbox("Please Destroy", &tower->mPleaseDestroy);
 						const int32_t leftBeforeEdit = tower->mLeftUpgrades;
 						const int32_t rightBeforeEdit = tower->mRightUpgrades;
-						EditTowerUpgradeCounter("Left Upgrades", towerFactory, tower, kUpgradePathLeft, tower->mLeftUpgrades);
-						EditTowerUpgradeCounter("Right Upgrades", towerFactory, tower, kUpgradePathRight, tower->mRightUpgrades);
+						auto* towerInfo = GetRuntimeTowerInfo(towerFactory, tower);
+						EditTowerUpgradeCounter("Left Upgrades", towerFactory, towerInfo, tower, kUpgradePathLeft, tower->mLeftUpgrades);
+						EditTowerUpgradeCounter("Right Upgrades", towerFactory, towerInfo, tower, kUpgradePathRight, tower->mRightUpgrades);
+						ImGui::Text("Upgrade limits: left %d, right %d",
+							GetRuntimeUpgradeLimit(towerInfo, kUpgradePathLeft),
+							GetRuntimeUpgradeLimit(towerInfo, kUpgradePathRight));
 						if (tower->mLeftUpgrades < leftBeforeEdit || tower->mRightUpgrades < rightBeforeEdit)
 						{
 							ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.25f, 1.0f), "Downgrades only change counters; applied upgrade data is not removed from the live tower.");
